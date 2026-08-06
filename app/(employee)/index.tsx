@@ -219,10 +219,15 @@ export default function EmployeeHomeScreen(): React.ReactElement {
   const router = useRouter();
   const greeting = getGreeting();
 
-  const handleProjectPress = useCallback((project: Project) => {
-    // TODO: navigate to project detail
-    // router.push(`/(employee)/project/${project.id}`);
-  }, []);
+  const handleProjectPress = useCallback(
+    (project: Project) => {
+      router.push({
+        pathname: '/(employee)/project/[id]',
+        params: { id: project.id },
+      });
+    },
+    [router],
+  );
 
   const handleUploadPress = useCallback((_upload: RecentUpload) => {
     // TODO: navigate to upload detail
