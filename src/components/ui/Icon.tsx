@@ -49,6 +49,7 @@ export const IconMap = {
   search: 'magnify',
   filter: 'filter-variant',
   back: 'arrow-left',
+  chevronRight: 'chevron-right',
   forward: 'arrow-right',
   close: 'close',
   check: 'check',
@@ -61,10 +62,13 @@ export const IconMap = {
   pending: 'clock-outline',
   // Content
   location: 'map-marker',
+  locationOutline: 'map-marker-outline',
   camera: 'camera',
   photo: 'image',
   document: 'file-document-outline',
   calendar: 'calendar',
+  calendarOutline: 'calendar-blank-outline',
+  compassOutline: 'compass-outline',
   clock: 'clock-outline',
   phone: 'phone',
   email: 'email-outline',
@@ -72,6 +76,7 @@ export const IconMap = {
   site: 'domain',
   engineer: 'hard-hat',
   client: 'office-building',
+  clientOutline: 'office-building-outline',
 } as const;
 
 export type IconName = keyof typeof IconMap;

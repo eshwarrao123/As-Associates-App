@@ -17,6 +17,7 @@ export const Colors = {
   // Borders & Dividers
   border: '#E5E7EB',
   divider: '#E5E7EB',
+  outlineVariant: '#C3C6CF',
   
   // Text
   textPrimary: '#1B1B1D',
