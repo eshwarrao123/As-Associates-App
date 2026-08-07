@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../../src/components/ui/Button';
 import { Card } from '../../src/components/ui/Card';
+import { Icon } from '../../src/components/ui/Icon';
 import { Input } from '../../src/components/ui/Input';
 import { Badge } from '../../src/components/ui/Badge';
 import { Dropdown } from '../../src/components/ui/Dropdown';
@@ -67,6 +68,7 @@ const RECENT_REQUESTS: RecentRequest[] = [
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function RequestsScreen(): React.ReactElement {
+  const router = useRouter();
   const [type, setType] = useState<RequestType>('Material');
   const [project, setProject] = useState<string | null>(PROJECT_OPTIONS[0]);
   const [subject, setSubject] = useState('');
@@ -75,8 +77,16 @@ export default function RequestsScreen(): React.ReactElement {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'Raise a Request' }} />
-      <SafeAreaView style={styles.safe} edges={['bottom']}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+        {/* ── App Bar ───────────────────────────────────────────────────── */}
+        <View style={styles.appBar}>
+          <TouchableOpacity onPress={() => router.back()} hitSlop={12}>
+            <Icon name="back" size="lg" color={Colors.primary} />
+          </TouchableOpacity>
+          <Text style={styles.appBarTitle}>Raise a Request</Text>
+          <View style={styles.appBarSpacer} />
+        </View>
         <ScrollView
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
@@ -206,6 +216,25 @@ export default function RequestsScreen(): React.ReactElement {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
+  appBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 56,
+    paddingHorizontal: Spacing[4],
+    gap: Spacing[3],
+    backgroundColor: Colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  appBarTitle: {
+    flex: 1,
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.lg,
+    lineHeight: 24,
+    color: Colors.primaryDark,
+    textAlign: 'center',
+  },
+  appBarSpacer: { width: 24 },
   content: { padding: Spacing[4], gap: Spacing[3], paddingBottom: Spacing[8] },
   section: { gap: Spacing[3] },
   sectionLabel: {
