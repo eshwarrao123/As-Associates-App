@@ -25,6 +25,7 @@ interface TabConfig {
 const ADMIN_TABS: TabConfig[] = [
   { label: 'Dashboard', route: '/(admin)',           icon: 'dashboard',  iconOutline: 'dashboardOutline',  match: '/' },
   { label: 'Projects',  route: '/(admin)/projects',  icon: 'projects',   iconOutline: 'projectsOutline',   match: '/projects' },
+  { label: 'Requests',  route: '/(admin)/requests',  icon: 'requests',   iconOutline: 'requestsOutline',   match: '/requests' },
   { label: 'Employees', route: '/(admin)/employees', icon: 'employees',  iconOutline: 'employeesOutline',  match: '/employees' },
   { label: 'Settings',  route: '/(admin)/settings',  icon: 'settings',   iconOutline: 'settingsOutline',   match: '/settings' },
 ];
