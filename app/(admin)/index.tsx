@@ -159,12 +159,12 @@ const PENDING: PendingRequest[] = [
 
 // ─── Action Buttons — Stitch: "Approve" (navy) + "Review" (outline) ───────────
 
-const ActionButtons: React.FC = () => (
+const ActionButtons: React.FC<{ onReview: () => void }> = ({ onReview }) => (
   <View style={styles.actionRow}>
     <TouchableOpacity activeOpacity={0.85} style={styles.approveBtn}>
       <Text style={styles.approveText}>Approve</Text>
     </TouchableOpacity>
-    <TouchableOpacity activeOpacity={0.85} style={styles.reviewBtn}>
+    <TouchableOpacity activeOpacity={0.85} style={styles.reviewBtn} onPress={onReview}>
       <Text style={styles.reviewText}>Review</Text>
     </TouchableOpacity>
   </View>
@@ -269,7 +269,7 @@ export default function AdminDashboardScreen(): React.ReactElement {
             ))}
 
             {/* Footer: "View Full History" button */}
-            <TouchableOpacity style={styles.historyBtn} activeOpacity={0.7}>
+            <TouchableOpacity style={styles.historyBtn} activeOpacity={0.7} onPress={() => router.push('/(admin)/activity-history' as never)}>
               <Text style={styles.historyBtnText}>View Full History</Text>
               <Icon name="forward" size="sm" color={Colors.textPrimary} />
             </TouchableOpacity>
@@ -298,7 +298,7 @@ export default function AdminDashboardScreen(): React.ReactElement {
                   <Text style={styles.pendingTime}>{req.timeAgo}</Text>
                 </View>
                 <Text style={styles.pendingDetail}>{req.detail}</Text>
-                <ActionButtons />
+                <ActionButtons onReview={() => router.push('/(admin)/requests' as never)} />
               </Card>
             </TouchableOpacity>
           ))}
@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
   logoText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.md,
-    color: Colors.surface,
+    color: Colors.textOnPrimary,
     lineHeight: 18,
   },
   headerTitle: {
@@ -573,7 +573,7 @@ const styles = StyleSheet.create({
   approveText: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.sm,
-    color: Colors.surface,
+    color: Colors.textOnPrimary,
   },
   reviewBtn: {
     flex: 1,
