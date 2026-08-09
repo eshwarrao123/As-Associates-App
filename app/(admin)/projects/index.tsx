@@ -7,7 +7,7 @@ import { Badge } from '../../../src/components/ui/Badge';
 import { Card } from '../../../src/components/ui/Card';
 import { ProgressBar } from '../../../src/components/ui/ProgressBar';
 import { AdminBottomNav } from '../../../src/components/ui/AdminBottomNav';
-import { Colors, FontFamily, FontSize, Spacing } from '../../../src/constants/tokens';
+import { BorderRadius, Colors, FontFamily, FontSize, Spacing } from '../../../src/constants/tokens';
 import type { BadgeVariant } from '../../../src/types';
 
 // ─── Types & mock data ────────────────────────────────────────────────────────
@@ -36,12 +36,6 @@ const STATUS_BADGE: Record<ProjectStatus, { variant: BadgeVariant; label: string
   ongoing: { variant: 'ongoing', label: 'Ongoing' },
   completed: { variant: 'completed', label: 'Completed' },
   onhold: { variant: 'onhold', label: 'On Hold' },
-};
-
-const STATUS_BORDER: Record<ProjectStatus, string> = {
-  ongoing: Colors.accent,
-  completed: Colors.success,
-  onhold: '#9CA3AF',
 };
 
 // ─── Filter tabs ──────────────────────────────────────────────────────────────
@@ -82,7 +76,6 @@ export default function AdminProjectsScreen(): React.ReactElement {
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        {/* Navy header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Projects</Text>
           <TouchableOpacity
@@ -94,7 +87,6 @@ export default function AdminProjectsScreen(): React.ReactElement {
           </TouchableOpacity>
         </View>
 
-        {/* Filter tabs */}
         <View style={styles.filterBar}>
           {FILTERS.map((f) => {
             const active = filter === f;
@@ -118,14 +110,14 @@ export default function AdminProjectsScreen(): React.ReactElement {
           showsVerticalScrollIndicator={false}
           ItemSeparatorComponent={() => <View style={styles.sep} />}
           renderItem={({ item }) => (
-            <Card style={StyleSheet.flatten([styles.projectCard, { borderLeftColor: STATUS_BORDER[item.status] }])}>
+            <Card style={styles.projectCard}>
               <View style={styles.cardRow1}>
                 <Text style={styles.projectName} numberOfLines={1}>{item.name}</Text>
                 <Badge {...STATUS_BADGE[item.status]} />
               </View>
               <View style={styles.cardRow2}>
-                <Text style={styles.meta}>🏦 {item.client}</Text>
-                <Text style={styles.meta}>📍 {item.city}</Text>
+                <Text style={styles.meta}>{item.client}</Text>
+                <Text style={styles.meta}>{item.city}</Text>
               </View>
               <View style={styles.cardRow3}>
                 <ProgressBar value={item.progress} showLabel={false} style={styles.flex1} />
@@ -133,7 +125,10 @@ export default function AdminProjectsScreen(): React.ReactElement {
               </View>
               <View style={styles.cardRow4}>
                 <AvatarStack initials={item.engineers} />
-                <TouchableOpacity onPress={() => router.push(`/(admin)/projects/${item.id}` as never)}>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => router.push(`/(admin)/projects/${item.id}` as never)}
+                >
                   <Text style={styles.viewDetails}>View Details</Text>
                 </TouchableOpacity>
               </View>
@@ -153,6 +148,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
   flex1: { flex: 1 },
 
+  // Top app bar — 56px, navy, flat (no shadow per DESIGN.md §11)
   header: {
     backgroundColor: Colors.primary,
     height: 56,
@@ -161,10 +157,26 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: Spacing[4],
   },
-  headerTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.surface },
-  addBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: Colors.accent },
-  addBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.surface },
+  // headline-sm: 18px / 600 — Inter_700Bold is the closest available weight
+  headerTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.lg,
+    color: Colors.textOnPrimary,
+  },
+  // Primary amber button — 8px radius, label-md (14px/500)
+  addBtn: {
+    paddingHorizontal: Spacing[3],
+    paddingVertical: 6,
+    borderRadius: BorderRadius.btn,
+    backgroundColor: Colors.accent,
+  },
+  addBtnText: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.md,
+    color: Colors.textOnAccent,
+  },
 
+  // Filter tabs — active indicator is navy (nav active = #1A3C5E per DESIGN.md §10)
   filterBar: {
     flexDirection: 'row',
     backgroundColor: Colors.surface,
@@ -173,29 +185,75 @@ const styles = StyleSheet.create({
   },
   filterTab: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: Spacing[3],
     alignItems: 'center',
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
   },
-  filterTabActive: { borderBottomColor: Colors.accent },
-  filterText: { fontFamily: FontFamily.medium, fontSize: 13, color: Colors.textSecondary },
-  filterTextActive: { color: Colors.accent },
+  filterTabActive: { borderBottomColor: Colors.primary },
+  // label-md: 14px / 500
+  filterText: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.md,
+    color: Colors.textMuted,
+  },
+  filterTextActive: { color: Colors.primary },
 
+  // 16px outer padding, 12px between cards (DESIGN.md §3 grid)
   list: { padding: Spacing[4] },
   sep: { height: Spacing[3] },
 
-  projectCard: { borderLeftWidth: 3, gap: Spacing[2] },
-  cardRow1: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing[2] },
-  projectName: { flex: 1, fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.textPrimary },
+  // Default content card — no left border accent (not in DESIGN.md §8 project card spec)
+  projectCard: { gap: Spacing[2] },
+  cardRow1: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing[2],
+  },
+  // headline-sm: 18px / 600
+  projectName: {
+    flex: 1,
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.lg,
+    color: Colors.textPrimary,
+  },
   cardRow2: { flexDirection: 'row', justifyContent: 'space-between' },
-  meta: { fontFamily: FontFamily.regular, fontSize: 13, color: Colors.textSecondary },
+  // body-md: 14px / 400
+  meta: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.md,
+    color: Colors.textSecondary,
+  },
   cardRow3: { flexDirection: 'row', alignItems: 'center', gap: Spacing[2] },
-  pct: { fontFamily: FontFamily.bold, fontSize: 12, color: Colors.primary, minWidth: 40, textAlign: 'right' },
-  cardRow4: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 },
-  viewDetails: { fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.accent },
+  // label-sm: 12px / 500 — percentage label right of progress bar
+  pct: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.sm,
+    color: Colors.primary,
+    minWidth: 36,
+    textAlign: 'right',
+  },
+  cardRow4: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: Spacing[1],
+  },
+  // Ghost inline action — navy per DESIGN.md §6 ghost button spec
+  viewDetails: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.md,
+    color: Colors.primary,
+  },
 
   avatarStack: { flexDirection: 'row' },
-  stackAvatar: { width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: Colors.surface },
+  stackAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: Colors.surface,
+  },
   stackOverlap: { marginLeft: -8 },
 });
