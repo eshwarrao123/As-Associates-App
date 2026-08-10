@@ -291,3 +291,58 @@ Unresolved and blocking the phase they sit in:
 - Whether the primary action color is Stitch amber or the current navy — Phase 1
 - Whether iOS is a target — Phase 4
 - Offline sync: not designed, not confirmed as a requirement
+
+---
+
+## Frontend Status — 2026-08-08
+
+### Audit Summary
+Complete codebase review of 17 screen files, 10 UI components, 9 employee-specific components. All screens render with mock data; no network calls or TanStack Query hooks exist. Full status report available in `docs/frontend-status-report.md`.
+
+### ✅ COMPLETE — Ready for Backend Integration
+- **Auth Flow**: Login screen with React Hook Form + Zod validation, mock user database, role-based routing
+- **Employee Screens (9/9)**: Dashboard, Projects, Project Detail, Upload (Field Submissions hub), Progress, Attendance, Requests, Profile — all functional with local state
+- **Admin Screens (17/17)**: Dashboard, Activity History, Projects (list/detail/new/assign-engineers), Employees (list/detail/new/edit/projects), Requests (list/detail), Reports, Settings (with inline edit + service categories)
+- **Navigation**: 100% wired — 24 router.push calls functional, 18 router.back calls, zero dead links, AdminBottomNav + BottomNav fully integrated
+- **Shared UI Components (10/10)**: Icon, Button, Input, Card, Badge, ProgressBar, Avatar, Dropdown, BottomNav, AdminBottomNav — all production-ready
+- **Employee Components (9/9)**: ProjectCard, PhotoPickerGrid, AttendanceCalendar, AttendanceSummaryCard, CategoryPicker, WorkStagePicker, QuickActionButton, RecentUploadItem, RequestControls — all functional
+
+### ⚠️ PARTIAL — Stubbed Actions (12 primary actions)
+- **Upload Flow**: Form renders but Submit button stubbed (line 157), no expo-image-picker call
+- **Progress Form**: Save button stubbed (line 196)
+- **Attendance**: Mark Present only updates local state (line 74), no persistence
+- **Requests (Employee)**: Submit button stubbed (line 185)
+- **Requests (Admin)**: Approve/Reject buttons stubbed (console.log only, lines 128-133)
+- **Reports Export**: PDF/Excel buttons stubbed (lines 128-133)
+- **Employee Add/Edit**: Forms submit log to console (lines 122, 153), no API call
+- **Project Creation**: Create button navigates back without saving (line 199)
+- **Settings**: Company profile save, logout (calls store method but no API), notification toggles, service switches — all local only
+
+### 🚫 MISSING — Integration Layer
+- **TanStack Query**: Provider mounted, zero hooks written
+- **API Client**: Configured with interceptors in `src/services/api.ts`, never invoked
+- **Loading/Empty/Error States**: None exist across any screen
+- **Quick Action Handlers**: Employee dashboard lines 153/158/163/168 commented out (dead navigation)
+- **PhotoPickerGrid Integration**: Component exists, not connected to upload screen
+
+### 🔴 CRITICAL BLOCKERS
+1. **Dead import**: `app/_layout.tsx` line 1 imports deleted `../global.css` (causes warning/error)
+2. **No API integration layer**: `apiClient` never called, zero TanStack Query hooks exist
+3. **Stitch alignment incomplete**: Priority 0 cross-cutting tasks NOT done (per `docs/stitch-alignment-checklist.md`)
+4. **Photo upload incomplete**: No picker integration despite `expo-image-picker` installed
+
+### 📊 COVERAGE METRICS
+- **Screens**: 17/17 (100%) render — 16 screens + 1 layout
+- **Navigation**: 24/24 router.push (100%), 18 router.back (100%), 0 dead links
+- **UI Components**: 10/10 (100%) production-ready
+- **Employee Components**: 9/9 (100%) functional
+- **Primary Actions Stubbed**: 12
+- **Mock Data Pattern**: Inline per-screen (100%)
+- **Backend Integration**: 0% — no API calls, no TanStack Query hooks
+
+### 🎯 IMMEDIATE ACTION ITEMS
+1. ✅ Remove `global.css` import from `app/_layout.tsx` line 1 — CRITICAL
+2. ✅ Restore quick action handlers in `(employee)/index.tsx` lines 153/158/163/168
+3. 🔴 Write first TanStack Query hook (e.g., `useProjects`) to establish integration pattern
+4. 🔴 Wire expo-image-picker in upload screen
+5. 🔴 Complete Priority 0 Stitch fixes before individual screen work
