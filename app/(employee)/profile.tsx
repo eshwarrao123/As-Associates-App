@@ -6,7 +6,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Avatar } from '../../src/components/ui/Avatar';
 import { Card } from '../../src/components/ui/Card';
 import { Button } from '../../src/components/ui/Button';
-import { Icon } from '../../src/components/ui/Icon';
+import { Icon, type IconName } from '../../src/components/ui/Icon';
 import { BottomNav } from '../../src/components/ui/BottomNav';
 import { useAuthStore } from '../../src/store/auth.store';
 import { Colors, FontFamily, FontSize, Spacing, BorderRadius, withAlpha } from '../../src/constants/tokens';
@@ -20,27 +20,27 @@ const STATS = [
 ];
 
 interface Row {
-  icon: string;
+  icon: IconName;
   label: string;
 }
 
 const CONTACT_ROWS: Row[] = [
-  { icon: '📞', label: '+91 98765 43210' },
-  { icon: '✉', label: 'rahul@asassociates.com' },
+  { icon: 'phone', label: '+91 98765 43210' },
+  { icon: 'email', label: 'rahul@asassociates.com' },
 ];
 
 const ACCOUNT_ROWS: Row[] = [
-  { icon: '🔒', label: 'Change Password' },
-  { icon: 'ℹ', label: 'Personal Information' },
+  { icon: 'lock', label: 'Change Password' },
+  { icon: 'info', label: 'Personal Information' },
 ];
 
 // ─── Row component ────────────────────────────────────────────────────────────
 
 const LinkRow: React.FC<Row> = ({ icon, label }) => (
   <TouchableOpacity activeOpacity={0.7} style={styles.linkRow}>
-    <Text style={styles.linkIcon}>{icon}</Text>
+    <Icon name={icon} size="md" color={Colors.textSecondary} style={styles.linkIcon} />
     <Text style={styles.linkLabel}>{label}</Text>
-    <Text style={styles.chevron}>›</Text>
+    <Icon name="chevronRight" size="md" color={Colors.textSecondary} />
   </TouchableOpacity>
 );
 
@@ -217,9 +217,8 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing[2],
   },
   linkRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing[4], paddingVertical: 14, gap: Spacing[3] },
-  linkIcon: { fontSize: 18, width: 24, textAlign: 'center' },
+  linkIcon: { width: 24, textAlign: 'center' },
   linkLabel: { flex: 1, fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.textPrimary },
-  chevron: { fontSize: 20, color: Colors.textSecondary },
   divider: { height: 1, backgroundColor: Colors.border, marginHorizontal: Spacing[4] },
 
   logoutBtn: {

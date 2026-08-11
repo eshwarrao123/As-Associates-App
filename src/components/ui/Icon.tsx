@@ -72,6 +72,8 @@ export const IconMap = {
   clock: 'clock-outline',
   phone: 'phone',
   email: 'email-outline',
+  lock: 'lock-outline',
+  star: 'star-outline',
   // Project
   site: 'domain',
   engineer: 'hard-hat',

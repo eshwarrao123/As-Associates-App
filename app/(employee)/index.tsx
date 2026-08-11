@@ -286,6 +286,53 @@ export default function EmployeeHomeScreen(): React.ReactElement {
             />
           </View>
 
+          {/* ── Quick Actions Grid ─────────────────────────────────────── */}
+          <View style={styles.quickActionsGrid}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={styles.quickActionCard}
+              onPress={() => router.push('/(employee)/progress' as never)}
+            >
+              <View style={styles.quickActionIconWrap}>
+                <Icon name="progress" size="lg" color={Colors.primary} />
+              </View>
+              <Text style={styles.quickActionLabel}>Log Progress</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={styles.quickActionCard}
+              onPress={() => router.push('/(employee)/requests' as never)}
+            >
+              <View style={styles.quickActionIconWrap}>
+                <Icon name="requests" size="lg" color={Colors.primary} />
+              </View>
+              <Text style={styles.quickActionLabel}>Raise Request</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={styles.quickActionCard}
+              onPress={() => router.push('/(employee)/upload' as never)}
+            >
+              <View style={styles.quickActionIconWrap}>
+                <Icon name="photo" size="lg" color={Colors.primary} />
+              </View>
+              <Text style={styles.quickActionLabel}>Upload Photos</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={styles.quickActionCard}
+              onPress={() => router.push('/(employee)/projects' as never)}
+            >
+              <View style={styles.quickActionIconWrap}>
+                <Icon name="projects" size="lg" color={Colors.primary} />
+              </View>
+              <Text style={styles.quickActionLabel}>My Projects</Text>
+            </TouchableOpacity>
+          </View>
+
           {/* ── My Active Projects ─────────────────────────────────────── */}
           <View style={styles.section}>
             <SectionHeader
@@ -428,6 +475,42 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xs,
     lineHeight: 14,
     color: Colors.textSecondary,
+    textAlign: 'center',
+  },
+
+  // ── Quick Actions Grid ──────────────────────────────────────────────────────
+  quickActionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing[3],
+    marginBottom: Spacing[5],
+  },
+  quickActionCard: {
+    flex: 1,
+    minWidth: '47%',
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.card,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingVertical: Spacing[4],
+    paddingHorizontal: Spacing[3],
+    alignItems: 'center',
+    gap: Spacing[2],
+    ...Shadow.sm,
+  },
+  quickActionIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: withAlpha(Colors.primary, 0.08),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickActionLabel: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.sm,
+    lineHeight: 18,
+    color: Colors.textPrimary,
     textAlign: 'center',
   },
 

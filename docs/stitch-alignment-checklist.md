@@ -351,24 +351,24 @@ Mismatches:
 
 These affect multiple screens simultaneously. Fixing them first gives maximum alignment gain.
 
-- [ ] **BottomNav (Employee)** — affects 8 screens — `src/components/ui/BottomNav.tsx`
+- [x] **BottomNav (Employee)** — affects 8 screens — `src/components/ui/BottomNav.tsx`
   - Change from 4 tabs to 5 tabs (add Upload tab)
   - Replace all emoji icons with Material Symbols
   - Verify active/inactive colors match Stitch
-- [ ] **AdminBottomNav** — affects 7 screens — `src/components/ui/AdminBottomNav.tsx`
+- [x] **AdminBottomNav** — affects 7 screens — `src/components/ui/AdminBottomNav.tsx`
   - Verify tab count matches Stitch admin spec
   - Replace all emoji icons with Material Symbols
   - Verify active/inactive colors match Stitch
-- [ ] **Icon System** — affects ALL screens — project-wide
+- [x] **Icon System** — affects ALL screens — project-wide
   - Install and configure `@expo/vector-icons` or `react-native-vector-icons` with Material Symbols
   - Replace every emoji/text glyph across all screens and components
-- [ ] **Badge** — affects 6+ screens — `src/components/ui/Badge.tsx`
+- [x] **Badge** — affects 6+ screens — `src/components/ui/Badge.tsx`
   - Verify text is ALL CAPS per Stitch label-sm spec
   - Tokenize hardcoded colors `#166534`, `#92400E`
-- [ ] **Button** — affects 10+ screens — `src/components/ui/Button.tsx`
+- [x] **Button** — affects 10+ screens — `src/components/ui/Button.tsx`
   - Verify font weight (Stitch spec says Medium 500, current uses `FontFamily.medium` ✅)
   - Verify label text matches Stitch button label styling
-- [ ] **tokens.ts** — affects ALL — `src/constants/tokens.ts`
+- [x] **tokens.ts** — affects ALL — `src/constants/tokens.ts`
   - Add `FontWeight` constant (600 for headline-sm, 500 for labels)
   - Add `LineHeight` tokens per Stitch typography spec
   - Add `LetterSpacing` tokens

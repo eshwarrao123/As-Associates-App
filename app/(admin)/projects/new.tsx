@@ -3,11 +3,20 @@ import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../../../src/components/ui/Button';
+import { Icon } from '../../../src/components/ui/Icon';
 import { Card } from '../../../src/components/ui/Card';
 import { Input } from '../../../src/components/ui/Input';
 import { Avatar } from '../../../src/components/ui/Avatar';
 import { Dropdown } from '../../../src/components/ui/Dropdown';
-import { Colors, FontFamily, FontSize, Spacing, BorderRadius } from '../../../src/constants/tokens';
+import {
+  BorderRadius,
+  Colors,
+  FontFamily,
+  FontSize,
+  LetterSpacing,
+  Spacing,
+  withAlpha,
+} from '../../../src/constants/tokens';
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
@@ -65,7 +74,7 @@ export default function NewProjectScreen(): React.ReactElement {
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        {/* Navy header */}
+        {/* Top app bar — 56px navy, flat */}
         <View style={styles.header}>
           <TouchableOpacity hitSlop={12} onPress={() => router.back()}>
             <Text style={styles.back}>‹</Text>
@@ -106,14 +115,14 @@ export default function NewProjectScreen(): React.ReactElement {
                 <Text style={styles.fieldLabel}>Start Date</Text>
                 <TouchableOpacity activeOpacity={0.7} style={styles.dateField}>
                   <Text style={styles.dateText}>20 Jul 2026</Text>
-                  <Text style={styles.dateIcon}>📅</Text>
+                  <Icon name="calendarOutline" size="sm" color={Colors.textMuted} />
                 </TouchableOpacity>
               </View>
               <View style={styles.flex1}>
                 <Text style={styles.fieldLabel}>End Date</Text>
                 <TouchableOpacity activeOpacity={0.7} style={styles.dateField}>
                   <Text style={styles.datePlaceholder}>Select date</Text>
-                  <Text style={styles.dateIcon}>📅</Text>
+                  <Icon name="calendarOutline" size="sm" color={Colors.textMuted} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -150,7 +159,7 @@ export default function NewProjectScreen(): React.ReactElement {
               value={search}
               onChangeText={setSearch}
               placeholder="Search engineers..."
-              placeholderTextColor={Colors.textSecondary}
+              placeholderTextColor={Colors.textMuted}
             />
             {filteredEngineers.map((e) => {
               const selected = team.includes(e.id);
@@ -182,7 +191,7 @@ export default function NewProjectScreen(): React.ReactElement {
               value={description}
               onChangeText={setDescription}
               placeholder="Project scope and notes..."
-              placeholderTextColor={Colors.textSecondary}
+              placeholderTextColor={Colors.textMuted}
               multiline
               textAlignVertical="top"
             />
@@ -201,6 +210,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
   flex1: { flex: 1 },
 
+  // Top app bar — 56px, navy, flat (no shadow per DESIGN.md §11)
   header: {
     backgroundColor: Colors.primary,
     height: 56,
@@ -209,22 +219,41 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: Spacing[4],
   },
-  back: { fontFamily: FontFamily.bold, fontSize: 28, color: Colors.surface, lineHeight: 30 },
+  back: {
+    fontFamily: FontFamily.bold,
+    fontSize: 28,
+    color: Colors.textOnPrimary,
+    lineHeight: 30,
+  },
   backSpacer: { width: 20 },
-  headerTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.surface },
+  // headline-sm: 18px / bold
+  headerTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.lg,
+    color: Colors.textOnPrimary,
+  },
 
   content: { padding: Spacing[4], gap: Spacing[3], paddingBottom: Spacing[8] },
   section: { gap: Spacing[3] },
+
+  // Overline: xs (11px) / medium / wider letter-spacing / muted color
   sectionLabel: {
     fontFamily: FontFamily.medium,
-    fontSize: 11,
-    letterSpacing: 1,
-    color: Colors.textSecondary,
+    fontSize: FontSize.xs,
+    letterSpacing: LetterSpacing.wider,
+    color: Colors.textMuted,
+    textTransform: 'uppercase',
   },
 
-  fieldLabel: { fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.textPrimary, marginBottom: 6 },
+  // label-md: 14px / 500
+  fieldLabel: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.md,
+    color: Colors.textPrimary,
+    marginBottom: 6,
+  },
 
-  // Dates
+  // Date picker row — two equal-width fields
   dateRow: { flexDirection: 'row', gap: Spacing[3] },
   dateField: {
     height: 48,
@@ -237,11 +266,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 14,
   },
-  dateText: { fontFamily: FontFamily.regular, fontSize: FontSize.base, color: Colors.textPrimary },
-  datePlaceholder: { fontFamily: FontFamily.regular, fontSize: FontSize.base, color: Colors.textSecondary },
-  dateIcon: { fontSize: 16 },
-
-  // Services
+  // body-lg: 16px / 400
+  dateText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.base,
+    color: Colors.textPrimary,
+  },
+  datePlaceholder: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.base,
+    color: Colors.textMuted,
+  },
+  dateIcon: { fontSize: FontSize.base },
+  // Services checkbox grid — 2 columns
   serviceGrid: { flexDirection: 'row', flexWrap: 'wrap' },
   serviceItem: {
     width: '50%',
@@ -260,10 +297,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   checkboxChecked: { backgroundColor: Colors.accent, borderColor: Colors.accent },
-  checkmark: { fontFamily: FontFamily.bold, fontSize: 13, color: Colors.surface },
-  serviceLabel: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textPrimary },
+  checkmark: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.sm,
+    color: Colors.textOnAccent,
+  },
+  // body-md: 14px / 400
+  serviceLabel: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.md,
+    color: Colors.textPrimary,
+  },
 
-  // Team
+  // Team search — matches Input field spec (48px, 1px border, 8px radius, 14px padding)
   searchInput: {
     height: 48,
     borderWidth: 1,
@@ -284,9 +330,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  engineerRowActive: { borderColor: Colors.accent, backgroundColor: `${Colors.accent}12` },
-  engineerName: { fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.textPrimary },
-  engineerRole: { fontFamily: FontFamily.regular, fontSize: 12, color: Colors.textSecondary },
+  engineerRowActive: {
+    borderColor: Colors.accent,
+    backgroundColor: withAlpha(Colors.accent, 0.07),
+  },
+  // List item title — body-lg: 16px / 400 per DESIGN.md §14
+  engineerName: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.base,
+    color: Colors.textPrimary,
+  },
+  // List item subtitle — body-md: 14px / 400
+  engineerRole: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.md,
+    color: Colors.textSecondary,
+  },
   selectDot: {
     width: 22,
     height: 22,
@@ -297,11 +356,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   selectDotActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
-  selectDotText: { fontFamily: FontFamily.bold, fontSize: 12, color: Colors.surface },
+  selectDotText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.sm,
+    color: Colors.textOnAccent,
+  },
 
-  // Description
+  // Text area — min-height 120px per DESIGN.md §7
   textArea: {
-    height: 100,
+    minHeight: 120,
     borderWidth: 1,
     borderColor: Colors.border,
     borderRadius: BorderRadius.btn,
