@@ -39,6 +39,11 @@ const VARIANT_CONFIG: Record<BadgeVariant, { bg: string; text: string; defaultLa
     text: Colors.warningText,
     defaultLabel: 'On Hold',
   },
+  upcoming: {
+    bg: withAlpha(Colors.primary, 0.12),
+    text: Colors.primary,
+    defaultLabel: 'Upcoming',
+  },
   pending: {
     bg: Colors.warningSubtle,
     text: Colors.warningText,
@@ -60,6 +65,9 @@ const VARIANT_CONFIG: Record<BadgeVariant, { bg: string; text: string; defaultLa
 
 export const Badge: React.FC<BadgeProps> = ({ variant, label, style }) => {
   const config = VARIANT_CONFIG[variant];
+
+  // Safety fallback: return null if variant is unknown
+  if (!config) return null;
 
   return (
     <View

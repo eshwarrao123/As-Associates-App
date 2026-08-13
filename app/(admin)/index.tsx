@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card } from '../../src/components/ui/Card';
@@ -181,12 +181,11 @@ export default function AdminDashboardScreen(): React.ReactElement {
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         {/* ── Header — Stitch: white bg, logo+name left, bell icon right ──── */}
         <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <View style={styles.logoMark}>
-              <Text style={styles.logoText}>A</Text>
-            </View>
-            <Text style={styles.headerTitle}>AS Associates</Text>
-          </View>
+          <Image
+            source={require('../../assets/logo.png')}
+            style={{ width: 100, height: 28 }}
+            resizeMode="contain"
+          />
           <TouchableOpacity activeOpacity={0.7}>
             <Icon name="requestsOutline" size="lg" color={Colors.textSecondary} />
           </TouchableOpacity>

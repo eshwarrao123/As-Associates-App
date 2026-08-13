@@ -14,10 +14,10 @@ import type { BadgeVariant } from '../../src/types';
 
 // ─── Types & mock data ────────────────────────────────────────────────────────
 
-type RequestType = 'Material' | 'Issue' | 'Support';
+type RequestType = 'Material' | 'Issue';
 type Priority = 'Low' | 'Medium' | 'High';
 
-const REQUEST_TYPES: RequestType[] = ['Material', 'Issue', 'Support'];
+const REQUEST_TYPES: RequestType[] = ['Material', 'Issue'];
 
 const PROJECT_OPTIONS = [
   'ICICI Bank HQ - Andheri',

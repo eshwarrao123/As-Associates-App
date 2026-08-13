@@ -36,6 +36,7 @@ export type BadgeVariant =
   | 'ongoing'
   | 'completed'
   | 'onhold'
+  | 'upcoming'
   | 'pending'
   | 'approved'
   | 'rejected';

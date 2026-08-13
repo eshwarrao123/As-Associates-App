@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   FlatList,
+  Image,
   StyleSheet,
   Text,
   TextInput,
@@ -63,7 +64,7 @@ const MOCK_ALL_PROJECTS: Project[] = [
     name: 'HUL Corporate Campus',
     client: 'Hindustan Unilever',
     location: 'Andheri, Mumbai',
-    status: 'onhold',
+    status: 'upcoming',
     progress: 45,
     startDate: '2024-02-10',
     endDate: '2024-11-30',
@@ -83,7 +84,7 @@ const FILTER_TABS: FilterTab[] = [
   { key: 'all', label: 'All' },
   { key: 'ongoing', label: 'Ongoing' },
   { key: 'completed', label: 'Completed' },
-  { key: 'onhold', label: 'On Hold' },
+  { key: 'upcoming', label: 'Upcoming' },
 ];
 
 // ─── Empty state ──────────────────────────────────────────────────────────────
@@ -147,8 +148,11 @@ export default function MyProjectsScreen(): React.ReactElement {
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
         {/* ── App Bar ───────────────────────────────────────────────────── */}
         <View style={styles.appBar}>
-          <Icon name="compassOutline" size="lg" color={Colors.primary} />
-          <Text style={styles.appBarTitle}>AS Associates</Text>
+          <Image
+            source={require('../../assets/logo.png')}
+            style={{ width: 100, height: 28 }}
+            resizeMode="contain"
+          />
           <Avatar
             initials={user?.avatarInitials ?? 'U'}
             size="sm"

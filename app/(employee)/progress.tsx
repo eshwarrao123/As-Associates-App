@@ -50,10 +50,6 @@ export default function ProgressScreen(): React.ReactElement {
   const [project, setProject] = useState<string | null>(PROJECT_OPTIONS[0]);
   const [stage, setStage] = useState('Foundation');
   const [workDone, setWorkDone] = useState('');
-  const [hours, setHours] = useState(8);
-
-  const adjustHours = (delta: number) =>
-    setHours((prev) => Math.max(0, Math.min(24, +(prev + delta).toFixed(1))));
 
   return (
     <>
@@ -152,40 +148,6 @@ export default function ProgressScreen(): React.ReactElement {
                 multiline
                 textAlignVertical="top"
               />
-            </View>
-
-            {/* Hours Worked */}
-            <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Hours Worked</Text>
-              <View style={styles.stepperRow}>
-                <View style={styles.stepper}>
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    style={styles.stepBtn}
-                    onPress={() => adjustHours(-0.5)}
-                  >
-                    <Text style={styles.stepBtnText}>−</Text>
-                  </TouchableOpacity>
-
-                  <View style={styles.stepDivider} />
-
-                  <View style={styles.stepValueBox}>
-                    <Text style={styles.hoursValue}>{hours}</Text>
-                  </View>
-
-                  <View style={styles.stepDivider} />
-
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    style={styles.stepBtn}
-                    onPress={() => adjustHours(0.5)}
-                  >
-                    <Text style={styles.stepBtnText}>+</Text>
-                  </TouchableOpacity>
-                </View>
-
-                <Text style={styles.hoursSuffix}>hrs</Text>
-              </View>
             </View>
           </Card>
 

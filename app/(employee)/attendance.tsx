@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../src/store/auth.store';
@@ -50,8 +50,11 @@ export default function AttendanceScreen(): React.ReactElement {
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         {/* ── App Bar ─────────────────────────────────────────────────────── */}
         <View style={styles.appBar}>
-          <Icon name="compassOutline" size="lg" color={Colors.primary} />
-          <Text style={styles.appBarTitle}>AS Associates</Text>
+          <Image
+            source={require('../../assets/logo.png')}
+            style={{ width: 100, height: 28 }}
+            resizeMode="contain"
+          />
           <Avatar initials={user?.avatarInitials ?? 'U'} size="sm" />
         </View>
 

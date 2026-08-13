@@ -40,12 +40,12 @@ const STATUS_BADGE: Record<ProjectStatus, { variant: BadgeVariant; label: string
 
 // ─── Filter tabs ──────────────────────────────────────────────────────────────
 
-type Filter = 'All' | 'Ongoing' | 'Completed' | 'On Hold';
-const FILTERS: Filter[] = ['All', 'Ongoing', 'Completed', 'On Hold'];
+type Filter = 'All' | 'Ongoing' | 'Completed' | 'Upcoming';
+const FILTERS: Filter[] = ['All', 'Ongoing', 'Completed', 'Upcoming'];
 const FILTER_STATUS: Record<Exclude<Filter, 'All'>, ProjectStatus> = {
   Ongoing: 'ongoing',
   Completed: 'completed',
-  'On Hold': 'onhold',
+  Upcoming: 'upcoming',
 };
 
 // ─── Avatar stack ─────────────────────────────────────────────────────────────

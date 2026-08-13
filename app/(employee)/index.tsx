@@ -1,5 +1,6 @@
 import React, { useCallback } from 'react';
 import {
+  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -248,12 +249,11 @@ export default function EmployeeHomeScreen(): React.ReactElement {
         >
           {/* ── Header ─────────────────────────────────────────────────── */}
           <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <View style={styles.logoMark}>
-                <Text style={styles.logoText}>A</Text>
-              </View>
-              <Text style={styles.headerAppName}>AS Associates</Text>
-            </View>
+            <Image
+              source={require('../../assets/logo.png')}
+              style={{ width: 100, height: 28 }}
+              resizeMode="contain"
+            />
             <Avatar
               initials={user?.avatarInitials ?? 'U'}
               size="sm"
@@ -270,67 +270,16 @@ export default function EmployeeHomeScreen(): React.ReactElement {
             </Text>
           </View>
 
-          {/* ── Stats Row (3 cards) ────────────────────────────────────── */}
+          {/* ── Stats Row (2 cards) ────────────────────────────────────── */}
           <View style={styles.statsRow}>
             <StatCard
               value={MOCK_PROJECTS.length}
               label={'Assigned\nProjects'}
             />
             <StatCard
-              value={MOCK_ATTENDANCE.absent}
-              label={'Pending\nTasks'}
-            />
-            <StatCard
               iconName="checkCircle"
               label="Present"
             />
-          </View>
-
-          {/* ── Quick Actions Grid ─────────────────────────────────────── */}
-          <View style={styles.quickActionsGrid}>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={styles.quickActionCard}
-              onPress={() => router.push('/(employee)/progress' as never)}
-            >
-              <View style={styles.quickActionIconWrap}>
-                <Icon name="progress" size="lg" color={Colors.primary} />
-              </View>
-              <Text style={styles.quickActionLabel}>Log Progress</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={styles.quickActionCard}
-              onPress={() => router.push('/(employee)/requests' as never)}
-            >
-              <View style={styles.quickActionIconWrap}>
-                <Icon name="requests" size="lg" color={Colors.primary} />
-              </View>
-              <Text style={styles.quickActionLabel}>Raise Request</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={styles.quickActionCard}
-              onPress={() => router.push('/(employee)/upload' as never)}
-            >
-              <View style={styles.quickActionIconWrap}>
-                <Icon name="photo" size="lg" color={Colors.primary} />
-              </View>
-              <Text style={styles.quickActionLabel}>Upload Photos</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={styles.quickActionCard}
-              onPress={() => router.push('/(employee)/projects' as never)}
-            >
-              <View style={styles.quickActionIconWrap}>
-                <Icon name="projects" size="lg" color={Colors.primary} />
-              </View>
-              <Text style={styles.quickActionLabel}>My Projects</Text>
-            </TouchableOpacity>
           </View>
 
           {/* ── My Active Projects ─────────────────────────────────────── */}
@@ -360,7 +309,7 @@ export default function EmployeeHomeScreen(): React.ReactElement {
             <SectionHeader
               title="Recent Uploads"
               linkText="Gallery"
-              onPress={() => router.push('/(employee)/upload')}
+              onPress={() => router.push('/(employee)/gallery' as never)}
             />
             <View style={styles.uploadsRow}>
               {MOCK_UPLOADS.map((upload) => (
@@ -401,30 +350,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: Spacing[3],
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing[2],
-  },
-  logoMark: {
-    width: 28,
-    height: 28,
-    borderRadius: BorderRadius.sm,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoText: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.md,
-    color: Colors.surface,
-    lineHeight: 18,
-  },
-  headerAppName: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.lg,
-    color: Colors.textPrimary,
   },
 
   // ── Greeting ────────────────────────────────────────────────────────────────
@@ -475,42 +400,6 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xs,
     lineHeight: 14,
     color: Colors.textSecondary,
-    textAlign: 'center',
-  },
-
-  // ── Quick Actions Grid ──────────────────────────────────────────────────────
-  quickActionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing[3],
-    marginBottom: Spacing[5],
-  },
-  quickActionCard: {
-    flex: 1,
-    minWidth: '47%',
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.card,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingVertical: Spacing[4],
-    paddingHorizontal: Spacing[3],
-    alignItems: 'center',
-    gap: Spacing[2],
-    ...Shadow.sm,
-  },
-  quickActionIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: withAlpha(Colors.primary, 0.08),
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  quickActionLabel: {
-    fontFamily: FontFamily.medium,
-    fontSize: FontSize.sm,
-    lineHeight: 18,
-    color: Colors.textPrimary,
     textAlign: 'center',
   },
 
