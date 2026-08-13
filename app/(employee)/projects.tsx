@@ -149,8 +149,13 @@ export default function MyProjectsScreen(): React.ReactElement {
         {/* ── App Bar ───────────────────────────────────────────────────── */}
         <View style={styles.appBar}>
           <Image
-            source={require('../../assets/logo.png')}
-            style={{ width: 100, height: 28 }}
+            source={require('../../assets/logo-icon.png')}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              overflow: 'hidden',
+            }}
             resizeMode="contain"
           />
           <Avatar
@@ -245,8 +250,10 @@ const styles = StyleSheet.create({
   appBar: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     height: 56,
-    paddingHorizontal: Spacing[4],
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: Colors.background,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
@@ -260,8 +267,7 @@ const styles = StyleSheet.create({
     color: Colors.primaryDark,
   },
   appBarAvatar: {
-    // keeps the centred title optically balanced against the leading icon
-    marginLeft: Spacing[2],
+    // avatar is already positioned by justifyContent: space-between
   },
 
   // Page heading — headline-lg-mobile (22/700/28)

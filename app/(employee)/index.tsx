@@ -250,8 +250,13 @@ export default function EmployeeHomeScreen(): React.ReactElement {
           {/* ── Header ─────────────────────────────────────────────────── */}
           <View style={styles.header}>
             <Image
-              source={require('../../assets/logo.png')}
-              style={{ width: 100, height: 28 }}
+              source={require('../../assets/logo-icon.png')}
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                overflow: 'hidden',
+              }}
               resizeMode="contain"
             />
             <Avatar
@@ -340,7 +345,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: Spacing[4],
     paddingBottom: Spacing[6],
   },
 
@@ -349,13 +353,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: Spacing[3],
+    height: 56,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: Colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
   },
 
   // ── Greeting ────────────────────────────────────────────────────────────────
   greetingSection: {
     marginTop: Spacing[2],
     marginBottom: Spacing[4],
+    paddingHorizontal: Spacing[4],
   },
   greetingText: {
     fontFamily: FontFamily.bold,
@@ -375,6 +385,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: Spacing[2],
     marginBottom: Spacing[5],
+    paddingHorizontal: Spacing[4],
   },
   statCard: {
     flex: 1,
@@ -406,6 +417,7 @@ const styles = StyleSheet.create({
   // ── Section ─────────────────────────────────────────────────────────────────
   section: {
     marginBottom: Spacing[5],
+    paddingHorizontal: Spacing[4],
   },
   sectionHeader: {
     flexDirection: 'row',

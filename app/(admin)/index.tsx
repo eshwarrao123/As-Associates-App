@@ -182,8 +182,13 @@ export default function AdminDashboardScreen(): React.ReactElement {
         {/* ── Header — Stitch: white bg, logo+name left, bell icon right ──── */}
         <View style={styles.header}>
           <Image
-            source={require('../../assets/logo.png')}
-            style={{ width: 100, height: 28 }}
+            source={require('../../assets/logo-icon.png')}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              overflow: 'hidden',
+            }}
             resizeMode="contain"
           />
           <TouchableOpacity activeOpacity={0.7}>
@@ -322,7 +327,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing[4],
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },

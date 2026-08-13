@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -109,9 +110,11 @@ export default function LoginScreen(): React.ReactElement {
           <View style={styles.card}>
             {/* Logo */}
             <View style={styles.logoWrapper}>
-              <View style={styles.logo}>
-                <Text style={styles.logoText}>A</Text>
-              </View>
+              <Image
+                source={require('../../assets/logo-icon.png')}
+                style={{ width: 80, height: 80 }}
+                resizeMode="contain"
+              />
               <Text style={styles.brandName}>AS Associates</Text>
             </View>
 

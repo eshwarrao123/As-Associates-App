@@ -54,8 +54,17 @@ export default function UploadScreen(): React.ReactElement {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'Field Submissions' }} />
-      <SafeAreaView style={styles.safe} edges={['bottom']}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+        {/* ── App Bar ───────────────────────────────────────────────── */}
+        <View style={styles.appBar}>
+          <TouchableOpacity onPress={() => router.back()} hitSlop={12}>
+            <Icon name="back" size="lg" color={Colors.primary} />
+          </TouchableOpacity>
+          <Text style={styles.appBarTitle}>Field Submissions</Text>
+          <View style={styles.appBarSpacer} />
+        </View>
+
         <ScrollView
           ref={scrollRef}
           contentContainerStyle={styles.content}
@@ -187,6 +196,28 @@ const TextArea: React.FC<{
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
+
+  // App bar — matches requests.tsx and progress.tsx navy header pattern
+  appBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 56,
+    paddingHorizontal: Spacing[4],
+    gap: Spacing[3],
+    backgroundColor: Colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  appBarTitle: {
+    flex: 1,
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.lg,
+    lineHeight: 24,
+    color: Colors.primaryDark,
+    textAlign: 'center',
+  },
+  appBarSpacer: { width: 24 },
+
   content: { padding: Spacing[4], paddingBottom: Spacing[8] },
 
   // ── Hub ─────────────────────────────────────────────────────────────────────

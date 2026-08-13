@@ -51,8 +51,13 @@ export default function AttendanceScreen(): React.ReactElement {
         {/* ── App Bar ─────────────────────────────────────────────────────── */}
         <View style={styles.appBar}>
           <Image
-            source={require('../../assets/logo.png')}
-            style={{ width: 100, height: 28 }}
+            source={require('../../assets/logo-icon.png')}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              overflow: 'hidden',
+            }}
             resizeMode="contain"
           />
           <Avatar initials={user?.avatarInitials ?? 'U'} size="sm" />
@@ -197,9 +202,10 @@ const styles = StyleSheet.create({
   appBar: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     height: 56,
-    paddingHorizontal: Spacing[4],
-    gap: Spacing[3],
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: Colors.background,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
