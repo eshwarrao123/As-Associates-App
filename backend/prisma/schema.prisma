@@ -1,0 +1,214 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  EMPLOYEE
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  DEACTIVATED
+}
+
+enum ProjectStatus {
+  ONGOING
+  COMPLETED
+  UPCOMING
+  ON_HOLD
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  HALF_DAY
+}
+
+enum FileType {
+  IMAGE
+  VIDEO
+  DOCUMENT
+}
+
+enum RequestType {
+  MATERIAL
+  ISSUE
+}
+
+enum RequestPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id               String     @id @default(uuid())
+  email            String     @unique
+  passwordHash     String?
+  firstName        String
+  lastName         String
+  role             Role       @default(EMPLOYEE)
+  status           UserStatus @default(PENDING)
+  employeeCode     String     @unique
+  phone            String?
+  photoUrl         String?
+  mustChangePassword Boolean  @default(true)
+  setupTokenHash   String?
+  createdById      String?
+  createdAt        DateTime   @default(now()) @db.Timestamptz
+  updatedAt        DateTime   @updatedAt @db.Timestamptz
+
+  createdBy        User?      @relation("CreatedByUser", fields: [createdById], references: [id], onDelete: SetNull)
+  createdUsers     User[]     @relation("CreatedByUser")
+  assignments      Assignment[]
+  attendanceLogs   AttendanceLog[]
+  progressLogs     ProgressLog[]
+  uploads          Upload[]
+  requests         Request[]
+  refreshTokens    RefreshToken[]
+  reviewedRequests Request[]  @relation("ReviewedRequests")
+
+  @@map("users")
+}
+
+model Project {
+  id          String        @id @default(uuid())
+  name        String
+  clientName  String
+  location    String
+  status      ProjectStatus @default(ONGOING)
+  startDate   DateTime      @db.Timestamptz
+  endDate     DateTime?     @db.Timestamptz
+  description String?
+  createdAt   DateTime      @default(now()) @db.Timestamptz
+  updatedAt   DateTime      @updatedAt @db.Timestamptz
+
+  assignments  Assignment[]
+  progressLogs ProgressLog[]
+  uploads      Upload[]
+  requests     Request[]
+
+  @@map("projects")
+}
+
+model Assignment {
+  id           String   @id @default(uuid())
+  userId       String
+  projectId    String
+  assignedById String
+  isActive     Boolean  @default(true)
+  unassignedAt DateTime? @db.Timestamptz
+  createdAt    DateTime  @default(now()) @db.Timestamptz
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  assignedBy   User     @relation("AssignedByUser", fields: [assignedById], references: [id], onDelete: Restrict)
+
+  @@unique([userId, projectId])
+  @@map("assignments")
+}
+
+model AttendanceLog {
+  id          String           @id @default(uuid())
+  userId      String
+  date        DateTime         @db.Date
+  checkInTime DateTime?        @db.Timestamptz
+  checkOutTime DateTime?       @db.Timestamptz
+  status      AttendanceStatus @default(PRESENT)
+  latitude    Float?
+  longitude   Float?
+  createdAt   DateTime         @default(now()) @db.Timestamptz
+
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("attendance_logs")
+}
+
+model ProgressLog {
+  id          String   @id @default(uuid())
+  userId      String
+  projectId   String
+  title       String
+  description String
+  workStage   String
+  date        DateTime @db.Date
+  createdAt   DateTime @default(now()) @db.Timestamptz
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  uploads     Upload[]
+
+  @@map("progress_logs")
+}
+
+model Upload {
+  id            String   @id @default(uuid())
+  userId        String
+  projectId     String
+  progressLogId String?
+  storageKey    String   @unique
+  fileUrl       String
+  fileType      FileType
+  mimeType      String
+  fileName      String
+  fileSizeBytes Int
+  category      String?
+  caption       String?
+  createdAt     DateTime @default(now()) @db.Timestamptz
+
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project       Project     @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  progressLog   ProgressLog? @relation(fields: [progressLogId], references: [id], onDelete: SetNull)
+
+  @@map("uploads")
+}
+
+model Request {
+  id           String          @id @default(uuid())
+  userId       String
+  projectId    String
+  type         RequestType
+  priority     RequestPriority @default(MEDIUM)
+  status       RequestStatus   @default(PENDING)
+  subject      String
+  description  String
+  reviewedById String?
+  reviewedAt   DateTime?       @db.Timestamptz
+  reviewNote   String?
+  createdAt    DateTime        @default(now()) @db.Timestamptz
+  updatedAt    DateTime        @updatedAt @db.Timestamptz
+
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project      Project         @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  reviewedBy   User?           @relation("ReviewedRequests", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@map("requests")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  familyId  String
+  expiresAt DateTime  @db.Timestamptz
+  revokedAt DateTime? @db.Timestamptz
+  createdAt DateTime  @default(now()) @db.Timestamptz
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
