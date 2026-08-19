@@ -7,6 +7,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { ProjectsModule } from './modules/projects/projects.module';
 import { AssignmentsModule } from './modules/assignments/assignments.module';
+import { AttendanceModule } from './modules/attendance/attendance.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { AccountActiveGuard } from './common/guards/account-active.guard';
@@ -21,6 +22,7 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
     UsersModule,
     ProjectsModule,
     AssignmentsModule,
+    AttendanceModule,
   ],
   providers: [
     PrismaService,
