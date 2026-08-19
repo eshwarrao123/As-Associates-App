@@ -5,6 +5,8 @@ import { APP_GUARD, APP_FILTER } from '@nestjs/core';
 import { PrismaService } from './prisma/prisma.service';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
+import { ProjectsModule } from './modules/projects/projects.module';
+import { AssignmentsModule } from './modules/assignments/assignments.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { AccountActiveGuard } from './common/guards/account-active.guard';
@@ -17,6 +19,8 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
     AuthModule,
     UsersModule,
+    ProjectsModule,
+    AssignmentsModule,
   ],
   providers: [
     PrismaService,
