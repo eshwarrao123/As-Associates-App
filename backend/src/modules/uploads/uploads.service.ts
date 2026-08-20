@@ -5,7 +5,6 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { v2 as cloudinary } from 'cloudinary';
 import { FileType } from '@prisma/client';
 
 const ALLOWED_MIMETYPES = [
@@ -22,7 +21,7 @@ export class UploadsService {
   constructor(
     private prisma: PrismaService,
     @Inject('CLOUDINARY') private cloudinaryConfig: any,
-  ) { }
+  ) {}
 
   // ─── Helper: determine FileType enum from mimetype ─────────────────────────
   private getFileType(mimeType: string): FileType {
@@ -38,6 +37,13 @@ export class UploadsService {
     progressLogId: string | undefined,
     userId: string,
   ) {
+    // FIX 1: Guard against undefined file
+    if (!file) {
+      throw new BadRequestException(
+        'No file provided. Send file as multipart/form-data with field name "file"',
+      );
+    }
+
     // Validate file type
     if (!ALLOWED_MIMETYPES.includes(file.mimetype)) {
       throw new BadRequestException(
@@ -65,7 +71,7 @@ export class UploadsService {
       },
     });
 
-    if (!assignment || !assignment.isActive) {
+    if (!assignment) {
       throw new BadRequestException('Not assigned to this project');
     }
 
@@ -79,16 +85,20 @@ export class UploadsService {
       }
     }
 
-    // Upload to Cloudinary
+    // FIX 2: Configure Cloudinary explicitly from injected credentials
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { v2: cloudinaryV2 } = require('cloudinary');
+    cloudinaryV2.config(this.cloudinaryConfig);
+
     const result: any = await new Promise((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream(
+      const stream = cloudinaryV2.uploader.upload_stream(
         {
           folder: `as-associates/${projectId}`,
           resource_type: 'auto',
         },
-        (error, result) => {
+        (error: any, res: any) => {
           if (error) reject(error);
-          else resolve(result);
+          else resolve(res);
         },
       );
       stream.end(file.buffer);
@@ -244,9 +254,12 @@ export class UploadsService {
 
     if (!upload) throw new NotFoundException('Upload not found');
 
-    // Delete from Cloudinary
+    // Delete from Cloudinary using same config pattern
     try {
-      await cloudinary.uploader.destroy(upload.storageKey);
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { v2: cloudinaryV2 } = require('cloudinary');
+      cloudinaryV2.config(this.cloudinaryConfig);
+      await cloudinaryV2.uploader.destroy(upload.storageKey);
     } catch {
       // Log but don't fail — DB record should still be removed
     }
