@@ -12,11 +12,20 @@ import {
 } from '@expo-google-fonts/inter';
 import { useAuthStore } from '../src/store/auth.store';
 import { Colors, FontFamily, FontSize } from '../src/constants/tokens';
+import { getAccessToken } from '../src/services/api/tokenStore';
+import { getMe } from '../src/services/auth/authService';
+import { clearTokens } from '../src/services/api/tokenStore';
 
 // ─── TanStack Query client ────────────────────────────────────────────────────
 
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: 2, staleTime: 1000 * 60 * 5 } },
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      retry: 1,
+      retryDelay: 1000,
+    },
+  },
 });
 
 // ─── Error Boundary ───────────────────────────────────────────────────────────
@@ -90,9 +99,11 @@ const ls = StyleSheet.create({
 function AuthGuard(): React.ReactElement | null {
   const router = useRouter();
   const segments = useSegments();
-  const { isAuthenticated, role, isHydrated, hydrate } = useAuthStore();
+  const { isAuthenticated, role, isHydrated, hydrate, setUser } = useAuthStore();
 
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const didHydrate = useRef(false);
+  const didCheckAuth = useRef(false);
   const segmentsRef = useRef(segments);
   segmentsRef.current = segments;
 
@@ -103,6 +114,43 @@ function AuthGuard(): React.ReactElement | null {
       void hydrate();
     }
   }, [hydrate]);
+
+  // Startup auth check — verify token is still valid
+  useEffect(() => {
+    if (!isHydrated || didCheckAuth.current) return;
+
+    didCheckAuth.current = true;
+
+    async function checkAuth() {
+      try {
+        const accessToken = await getAccessToken();
+
+        if (accessToken) {
+          // Token exists — verify it's still valid
+          const userData = await getMe();
+
+          // Map API user shape to local User type
+          const user = {
+            id: userData.id,
+            name: `${userData.firstName} ${userData.lastName}`,
+            email: userData.email,
+            role: userData.role.toLowerCase() as 'admin' | 'employee',
+            department: userData.department,
+            avatarInitials: `${userData.firstName[0]}${userData.lastName[0]}`.toUpperCase(),
+          };
+
+          setUser(user);
+        }
+      } catch {
+        // Token invalid or expired — clear it
+        await clearTokens();
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    }
+
+    void checkAuth();
+  }, [isHydrated, setUser]);
 
   // Redirect when auth state changes — read segments from ref to avoid loop
   useEffect(() => {
@@ -118,8 +166,8 @@ function AuthGuard(): React.ReactElement | null {
     }
   }, [isAuthenticated, isHydrated, role, router]);
 
-  // Show spinner until hydration completes
-  if (!isHydrated) {
+  // Show spinner until hydration and auth check complete
+  if (!isHydrated || isCheckingAuth) {
     return <LoadingScreen />;
   }
 
