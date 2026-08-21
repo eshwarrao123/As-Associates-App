@@ -99,7 +99,7 @@ const ls = StyleSheet.create({
 function AuthGuard(): React.ReactElement | null {
   const router = useRouter();
   const segments = useSegments();
-  const { isAuthenticated, role, isHydrated, hydrate, setUser } = useAuthStore();
+  const { isAuthenticated, role, isHydrated, hydrate, setUser, user } = useAuthStore();
 
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const didHydrate = useRef(false);
@@ -162,9 +162,15 @@ function AuthGuard(): React.ReactElement | null {
     if (!isAuthenticated && !inAuthGroup) {
       router.replace('/(auth)/login');
     } else if (isAuthenticated && inAuthGroup) {
+      // Check if password change is required BEFORE role-based routing
+      if (user?.mustChangePassword === true) {
+        router.replace('/(auth)/change-password');
+        return;
+      }
+
       router.replace(role === 'admin' ? '/(admin)' : '/(employee)');
     }
-  }, [isAuthenticated, isHydrated, role, router]);
+  }, [isAuthenticated, isHydrated, role, router, user?.mustChangePassword]);
 
   // Show spinner until hydration and auth check complete
   if (!isHydrated || isCheckingAuth) {

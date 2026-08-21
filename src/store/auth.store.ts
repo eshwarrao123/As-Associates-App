@@ -23,7 +23,7 @@ interface AuthActions {
   setToken: (token: string) => void;
   logout: () => Promise<void>;
   hydrate: () => Promise<void>;
-  loginAction: (email: string, password: string) => Promise<void>;
+  loginAction: (employeeCode: string, password: string) => Promise<void>;
   logoutAction: () => Promise<void>;
 }
 
@@ -97,11 +97,11 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
   },
 
   // ─── loginAction: authenticate user via API ────────────────────────────────
-  loginAction: async (email: string, password: string) => {
+  loginAction: async (employeeCode: string, password: string) => {
     set({ isLoading: true, error: null });
 
     try {
-      const response = await authService.login(email, password);
+      const response = await authService.login(employeeCode, password);
 
       // Store tokens in secure storage
       await Promise.all([
@@ -117,6 +117,7 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
         role: response.user.role.toLowerCase() as UserRole,
         department: response.user.department,
         avatarInitials: `${response.user.firstName[0]}${response.user.lastName[0]}`.toUpperCase(),
+        mustChangePassword: response.mustChangePassword,
       };
 
       // Persist user to AsyncStorage for hydration

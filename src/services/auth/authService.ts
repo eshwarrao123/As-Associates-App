@@ -3,7 +3,7 @@ import apiClient from '../api/client';
 // ─── Request/Response Types ───────────────────────────────────────────────────
 
 interface LoginRequest {
-  email: string;
+  employeeCode: string;
   password: string;
 }
 
@@ -65,17 +65,17 @@ interface GetMeResponse {
 // ─── Auth Service Functions ───────────────────────────────────────────────────
 
 /**
- * Authenticates a user with email and password.
- * @param email - User's email address
+ * Authenticates a user with employee code and password.
+ * @param employeeCode - User's employee code
  * @param password - User's password
  * @returns Login response containing tokens and user data
  */
 export async function login(
-  email: string,
+  employeeCode: string,
   password: string,
 ): Promise<LoginResponse> {
   const response = await apiClient.post<LoginResponse>('/auth/login', {
-    email,
+    employeeCode,
     password,
   } satisfies LoginRequest);
 
@@ -121,7 +121,7 @@ export async function changePassword(
   currentPassword: string,
   newPassword: string,
 ): Promise<ChangePasswordResponse> {
-  const response = await apiClient.post<ChangePasswordResponse>(
+  const response = await apiClient.patch<ChangePasswordResponse>(
     '/auth/change-password',
     {
       currentPassword,

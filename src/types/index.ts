@@ -9,6 +9,7 @@ export interface User {
   role: UserRole;
   department?: string;
   avatarInitials: string;
+  mustChangePassword?: boolean;
 }
 
 export interface AuthCredentials {
