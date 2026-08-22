@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card } from '../../src/components/ui/Card';
@@ -15,11 +15,12 @@ import {
   Shadow,
 } from '../../src/constants/tokens';
 import type { BadgeVariant } from '../../src/types';
+import { useEmployeeCount, useProjectCount } from '../../src/hooks/useAdminDashboard';
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
 interface Kpi {
-  value: string;
+  value: string | number;
   label: string;
   accent: string;
   valueColor?: string;
@@ -28,40 +29,13 @@ interface Kpi {
   icon: IconName;
   /** Subtle background for icon container */
   iconBg: string;
+  /** Whether this KPI is loading from API */
+  isLoading?: boolean;
 }
 
-const KPIS: Kpi[] = [
-  {
-    value: '24',
-    label: 'Total Projects',
-    accent: Colors.primary,
-    trend: '↑ 12%',
-    icon: 'projectsOutline',
-    iconBg: Colors.background,
-  },
-  {
-    value: '11',
-    label: 'Ongoing',
-    accent: Colors.accent,
-    icon: 'progress',
-    iconBg: Colors.warningSubtle,
-  },
-  {
-    value: '18',
-    label: 'Total Employees',
-    accent: Colors.success,
-    icon: 'employeesOutline',
-    iconBg: Colors.background,
-  },
-  {
-    value: '6',
-    label: 'Pending Requests',
-    accent: Colors.danger,
-    valueColor: Colors.danger,
-    icon: 'document',
-    iconBg: Colors.dangerSubtle,
-  },
-];
+// Mock data for KPIs that aren't connected to API yet
+const ONGOING_PROJECTS_COUNT = '11';
+const PENDING_REQUESTS_COUNT = '6';
 
 interface StatusProject {
   id: string;
@@ -175,6 +149,50 @@ const ActionButtons: React.FC<{ onReview: () => void }> = ({ onReview }) => (
 export default function AdminDashboardScreen(): React.ReactElement {
   const router = useRouter();
 
+  // Fetch API data for counts
+  const { data: employeeData, isLoading: isLoadingEmployees } = useEmployeeCount();
+  const { data: projectData, isLoading: isLoadingProjects } = useProjectCount();
+
+  // Build KPIs array with real data
+  const KPIS: Kpi[] = [
+    {
+      value: isLoadingProjects
+        ? '--'
+        : projectData?.meta?.total ?? '--',
+      label: 'Total Projects',
+      accent: Colors.primary,
+      trend: '↑ 12%',
+      icon: 'projectsOutline',
+      iconBg: Colors.background,
+      isLoading: isLoadingProjects,
+    },
+    {
+      value: ONGOING_PROJECTS_COUNT,
+      label: 'Ongoing',
+      accent: Colors.accent,
+      icon: 'progress',
+      iconBg: Colors.warningSubtle,
+    },
+    {
+      value: isLoadingEmployees
+        ? '--'
+        : employeeData?.meta?.total ?? '--',
+      label: 'Total Employees',
+      accent: Colors.success,
+      icon: 'employeesOutline',
+      iconBg: Colors.background,
+      isLoading: isLoadingEmployees,
+    },
+    {
+      value: PENDING_REQUESTS_COUNT,
+      label: 'Pending Requests',
+      accent: Colors.danger,
+      valueColor: Colors.danger,
+      icon: 'document',
+      iconBg: Colors.dangerSubtle,
+    },
+  ];
+
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
@@ -212,7 +230,11 @@ export default function AdminDashboardScreen(): React.ReactElement {
                 <View style={[styles.kpiIconContainer, { backgroundColor: kpi.iconBg }]}>
                   <Icon name={kpi.icon} size="md" color={Colors.textSecondary} />
                 </View>
-                <Text style={styles.kpiValue}>{kpi.value}</Text>
+                {kpi.isLoading ? (
+                  <ActivityIndicator size="small" color={Colors.primary} style={styles.kpiLoader} />
+                ) : (
+                  <Text style={styles.kpiValue}>{kpi.value}</Text>
+                )}
                 <Text style={styles.kpiLabel}>{kpi.label}</Text>
               </View>
             ))}
@@ -410,6 +432,10 @@ const styles = StyleSheet.create({
     fontSize: FontSize['2xl'],
     lineHeight: 28,
     color: Colors.textPrimary,
+  },
+  kpiLoader: {
+    height: 28,
+    marginVertical: 0,
   },
   kpiLabel: {
     fontFamily: FontFamily.regular,

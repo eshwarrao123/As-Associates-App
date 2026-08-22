@@ -72,3 +72,42 @@ export async function getRequestById(id: string) {
   );
   return response.data.data;
 }
+
+/**
+ * Fetches all requests (admin view).
+ * @param status - Optional status filter ('PENDING', 'APPROVED', 'REJECTED')
+ * @returns Array of all requests
+ */
+export async function getAllRequests(status?: string) {
+  const url = status ? `/requests?status=${status}` : '/requests';
+  const response = await apiClient.get<{ data: RequestResponse[] }>(url);
+  return response.data.data;
+}
+
+/**
+ * Approves a request (admin only).
+ * @param id - Request ID
+ * @returns Updated request
+ */
+export async function approveRequest(id: string) {
+  const response = await apiClient.patch<{ data: RequestResponse }>(
+    `/requests/${id}/approve`,
+    {},
+  );
+  return response.data.data;
+}
+
+/**
+ * Rejects a request (admin only).
+ * @param id - Request ID
+ * @param reason - Optional rejection reason
+ * @returns Updated request
+ */
+export async function rejectRequest(id: string, reason?: string) {
+  const body = reason ? { reason } : {};
+  const response = await apiClient.patch<{ data: RequestResponse }>(
+    `/requests/${id}/reject`,
+    body,
+  );
+  return response.data.data;
+}

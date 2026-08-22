@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar } from '../../../src/components/ui/Avatar';
@@ -9,6 +9,8 @@ import { Card } from '../../../src/components/ui/Card';
 import { ProgressBar } from '../../../src/components/ui/ProgressBar';
 import { AdminBottomNav } from '../../../src/components/ui/AdminBottomNav';
 import { Icon } from '../../../src/components/ui/Icon';
+import { useAdminProject, useDeleteProject } from '../../../src/hooks/useAdminProjects';
+import { getErrorMessage } from '../../../src/services/api/errorHandler';
 import {
   BorderRadius,
   Colors,
@@ -20,69 +22,28 @@ import {
 } from '../../../src/constants/tokens';
 import type { BadgeVariant } from '../../../src/types';
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
-
-interface ProjectDetail {
-  name: string;
-  client: string;
-  city: string;
-  status: BadgeVariant;
-  statusLabel: string;
-  progress: number;
-  startDate: string;
-  endDate: string;
-  budget: string;
-}
-
-const PROJECT: ProjectDetail = {
-  name: 'ICICI Bank HQ - Andheri',
-  client: 'ICICI Bank',
-  city: 'Mumbai',
-  status: 'ongoing',
-  statusLabel: 'Ongoing',
-  progress: 65,
-  startDate: '10 Mar 2026',
-  endDate: '30 Sep 2026',
-  budget: '₹2.4 Cr',
-};
+// ─── Types & Helpers ──────────────────────────────────────────────────────────
 
 const TABS = ['Overview', 'Team', 'Photos', 'Progress', 'Requests'] as const;
 type Tab = (typeof TABS)[number];
 
-const OVERVIEW_META = [
-  { label: 'Client', value: PROJECT.client },
-  { label: 'Location', value: PROJECT.city },
-  { label: 'Start Date', value: PROJECT.startDate },
-  { label: 'End Date', value: PROJECT.endDate },
-  { label: 'Budget', value: PROJECT.budget },
-];
-
-const SERVICES = ['Civil', 'Electrical', 'HVAC', 'False Ceiling', 'Furniture'];
-
-const TEAM = [
-  { id: 't1', name: 'Rahul Kumar', initials: 'RK', role: 'Site Engineer' },
-  { id: 't2', name: 'Anita Sharma', initials: 'AS', role: 'Civil Engineer' },
-  { id: 't3', name: 'Vikram Patel', initials: 'VP', role: 'Electrical Engineer' },
-];
-
-const PROGRESS_STAGES = [
-  { label: 'Foundation', value: 100 },
-  { label: 'Civil Works', value: 80 },
-  { label: 'Electrical', value: 55 },
-  { label: 'Finishing', value: 20 },
-];
-
-interface DetailRequest {
-  id: string;
-  title: string;
-  by: string;
-  status: BadgeVariant;
+function formatDate(isoDate: string): string {
+  const date = new Date(isoDate);
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-const REQUESTS: DetailRequest[] = [
-  { id: 'q1', title: 'Cement Bags x50', by: 'Rahul Kumar', status: 'pending' },
-  { id: 'q2', title: 'Extra scaffolding', by: 'Anita Sharma', status: 'approved' },
-];
+function getStatusLabel(variant: BadgeVariant): string {
+  switch (variant) {
+    case 'ongoing':
+      return 'Ongoing';
+    case 'completed':
+      return 'Completed';
+    case 'onhold':
+      return 'On Hold';
+    default:
+      return 'Unknown';
+  }
+}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -90,6 +51,64 @@ export default function ProjectDetailScreen(): React.ReactElement {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [tab, setTab] = useState<Tab>('Overview');
+
+  const { data: project, isLoading, error } = useAdminProject(id ?? '');
+  const deleteProject = useDeleteProject();
+
+  const handleDelete = () => {
+    Alert.alert('Delete Project', 'This cannot be undone. Continue?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          deleteProject.mutate(id ?? '', {
+            onSuccess: () => {
+              router.replace('/(admin)/projects');
+            },
+            onError: (err) => {
+              Alert.alert('Error', getErrorMessage(err));
+            },
+          });
+        },
+      },
+    ]);
+  };
+
+  if (isLoading) {
+    return (
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
+        <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+          <View style={styles.loading}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+          </View>
+        </SafeAreaView>
+      </>
+    );
+  }
+
+  if (error || !project) {
+    return (
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
+        <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+          <View style={styles.loading}>
+            <Text style={styles.errorText}>Failed to load project</Text>
+            <Button label="Go Back" onPress={() => router.back()} />
+          </View>
+        </SafeAreaView>
+      </>
+    );
+  }
+
+  const OVERVIEW_META = [
+    { label: 'Client', value: project.client },
+    { label: 'Location', value: project.location },
+    { label: 'Start Date', value: formatDate(project.startDate) },
+    { label: 'End Date', value: project.endDate ? formatDate(project.endDate) : 'Not set' },
+    { label: 'Scope', value: project.scope },
+  ];
 
   return (
     <>
@@ -101,18 +120,18 @@ export default function ProjectDetailScreen(): React.ReactElement {
             <TouchableOpacity hitSlop={12} onPress={() => router.back()}>
               <Text style={styles.back}>‹</Text>
             </TouchableOpacity>
-            <Text style={styles.headerTitle} numberOfLines={1}>{PROJECT.name}</Text>
-            <Badge variant={PROJECT.status} label={PROJECT.statusLabel} />
+            <Text style={styles.headerTitle} numberOfLines={1}>{project.name}</Text>
+            <Badge variant={project.status} label={getStatusLabel(project.status)} />
           </View>
           <View style={styles.headerProgressRow}>
             <ProgressBar
-              value={PROJECT.progress}
+              value={project.progress}
               showLabel={false}
               style={styles.flex1}
               trackColor="rgba(255,255,255,0.2)"
               fillColor={Colors.accent}
             />
-            <Text style={styles.headerPct}>{PROJECT.progress}%</Text>
+            <Text style={styles.headerPct}>{project.progress}%</Text>
           </View>
         </View>
 
@@ -154,34 +173,36 @@ export default function ProjectDetailScreen(): React.ReactElement {
                   </View>
                 ))}
               </Card>
-              <Card style={styles.section}>
-                <Text style={styles.sectionLabel}>SERVICES</Text>
-                <View style={styles.chipWrap}>
-                  {SERVICES.map((s) => (
-                    <View key={s} style={styles.serviceChip}>
-                      <Text style={styles.serviceChipText}>{s}</Text>
-                    </View>
-                  ))}
-                </View>
-              </Card>
+              <Button
+                label="Delete Project"
+                variant="outline"
+                onPress={handleDelete}
+                disabled={deleteProject.isPending}
+              />
             </>
           )}
 
           {tab === 'Team' && (
             <Card style={styles.section}>
               <Text style={styles.sectionLabel}>ASSIGNED TEAM</Text>
-              {TEAM.map((m, i) => (
-                <View
-                  key={m.id}
-                  style={[styles.teamRow, i < TEAM.length - 1 && styles.metaBorder]}
-                >
-                  <Avatar initials={m.initials} size="sm" />
-                  <View style={styles.flex1}>
-                    <Text style={styles.teamName}>{m.name}</Text>
-                    <Text style={styles.teamRole}>{m.role}</Text>
-                  </View>
-                </View>
-              ))}
+              {project.team && project.team.length > 0 ? (
+                project.team.map((m, i) => {
+                  const initials = `${m.firstName[0]}${m.lastName[0]}`.toUpperCase();
+                  return (
+                    <View
+                      key={m.id}
+                      style={[styles.teamRow, i < project.team!.length - 1 && styles.metaBorder]}
+                    >
+                      <Avatar initials={initials} size="sm" />
+                      <View style={styles.flex1}>
+                        <Text style={styles.teamName}>{`${m.firstName} ${m.lastName}`}</Text>
+                      </View>
+                    </View>
+                  );
+                })
+              ) : (
+                <Text style={styles.emptyText}>No team members assigned yet</Text>
+              )}
               <Button
                 label="Assign Engineers"
                 variant="outline"
@@ -206,33 +227,14 @@ export default function ProjectDetailScreen(): React.ReactElement {
           {tab === 'Progress' && (
             <Card style={styles.section}>
               <Text style={styles.sectionLabel}>STAGE PROGRESS</Text>
-              {PROGRESS_STAGES.map((s) => (
-                <View key={s.label} style={styles.stageRow}>
-                  <View style={styles.stageHead}>
-                    <Text style={styles.stageLabel}>{s.label}</Text>
-                    <Text style={styles.stagePct}>{s.value}%</Text>
-                  </View>
-                  <ProgressBar value={s.value} showLabel={false} />
-                </View>
-              ))}
+              <Text style={styles.emptyText}>Stage progress data not yet available</Text>
             </Card>
           )}
 
           {tab === 'Requests' && (
             <Card style={styles.section}>
               <Text style={styles.sectionLabel}>PROJECT REQUESTS</Text>
-              {REQUESTS.map((r, i) => (
-                <View
-                  key={r.id}
-                  style={[styles.reqRow, i < REQUESTS.length - 1 && styles.metaBorder]}
-                >
-                  <View style={styles.flex1}>
-                    <Text style={styles.reqTitle}>{r.title}</Text>
-                    <Text style={styles.reqBy}>by {r.by}</Text>
-                  </View>
-                  <Badge variant={r.status} />
-                </View>
-              ))}
+              <Text style={styles.emptyText}>Project requests not yet available</Text>
             </Card>
           )}
         </ScrollView>
@@ -248,6 +250,19 @@ export default function ProjectDetailScreen(): React.ReactElement {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
   flex1: { flex: 1 },
+  loading: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: Spacing[4] },
+  errorText: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.base,
+    color: Colors.textSecondary,
+  },
+  emptyText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.md,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    paddingVertical: Spacing[3],
+  },
 
   // Top app bar — 56px base height, navy, flat, extended with progress row
   header: {

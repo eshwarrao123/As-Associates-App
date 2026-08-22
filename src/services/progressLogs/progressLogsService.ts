@@ -57,3 +57,19 @@ export async function getMyProgressLogs() {
   );
   return response.data.data;
 }
+
+/**
+ * Admin endpoint: Fetches all progress logs with optional project filter.
+ * @param params - Optional filters (projectId)
+ * @returns Array of progress logs with user and project info
+ */
+export async function getAdminProgressLogs(params?: { projectId?: string }) {
+  const queryParams: Record<string, string> = {};
+  if (params?.projectId) queryParams.projectId = params.projectId;
+
+  const response = await apiClient.get<{ data: ProgressLogResponse[] }>(
+    '/progress-logs/admin',
+    { params: queryParams },
+  );
+  return response.data.data;
+}

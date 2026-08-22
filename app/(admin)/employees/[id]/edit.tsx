@@ -1,5 +1,13 @@
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../../../../src/components/ui/Button';
@@ -14,47 +22,116 @@ import {
   LetterSpacing,
   Spacing,
 } from '../../../../src/constants/tokens';
-
-// ─── Mock data (mirrors employees/index.tsx) ──────────────────────────────────
-
-interface EmployeeFormData {
-  id: string;
-  fullName: string;
-  empId: string;
-  designation: string;
-  phone: string;
-  email: string;
-  department: string;
-  status: string;
-  joinDate: string;
-}
-
-const EMPLOYEES: EmployeeFormData[] = [
-  { id: '1', fullName: 'Rahul Kumar',  empId: 'ASA-2024-047', designation: 'Site Engineer',      phone: '+91 98765 43210', email: 'rahul.kumar@asassociates.com',  department: 'Civil',       status: 'Active',   joinDate: '15-03-2024' },
-  { id: '2', fullName: 'Anita Sharma', empId: 'ASA-2024-051', designation: 'Civil Engineer',      phone: '+91 91234 56789', email: 'anita.sharma@asassociates.com', department: 'Civil',       status: 'Active',   joinDate: '22-04-2024' },
-  { id: '3', fullName: 'Vikram Patel', empId: 'ASA-2023-018', designation: 'Electrical Engineer', phone: '+91 99887 76655', email: 'vikram.patel@asassociates.com', department: 'Electrical',  status: 'Active',   joinDate: '08-07-2023' },
-  { id: '4', fullName: 'Priya Joshi',  empId: 'ASA-2022-009', designation: 'Project Lead',        phone: '+91 90011 22334', email: 'priya.joshi@asassociates.com',  department: 'Civil',       status: 'Active',   joinDate: '01-02-2022' },
-  { id: '5', fullName: 'Manish Rao',   empId: 'ASA-2024-063', designation: 'Junior Engineer',     phone: '+91 88001 23456', email: 'manish.rao@asassociates.com',   department: 'General',     status: 'Inactive', joinDate: '10-06-2024' },
-];
+import { useEmployee, useUpdateEmployee } from '../../../../src/hooks/useEmployees';
+import { getErrorMessage } from '../../../../src/services/api/errorHandler';
 
 const DEPARTMENTS = ['Civil', 'Electrical', 'Plumbing', 'HVAC', 'General'];
-const STATUSES    = ['Active', 'Inactive'];
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function EditEmployeeScreen(): React.ReactElement {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const seed = EMPLOYEES.find((e) => e.id === id) ?? EMPLOYEES[0];
 
-  const [fullName,    setFullName]    = useState(seed.fullName);
-  const [empId,       setEmpId]       = useState(seed.empId);
-  const [designation, setDesignation] = useState(seed.designation);
-  const [phone,       setPhone]       = useState(seed.phone);
-  const [email,       setEmail]       = useState(seed.email);
-  const [department,  setDepartment]  = useState<string | null>(seed.department);
-  const [status,      setStatus]      = useState<string | null>(seed.status);
-  const [joinDate,    setJoinDate]    = useState(seed.joinDate);
+  // Fetch employee data
+  const { data: employee, isLoading } = useEmployee(id ?? '');
+  const updateEmployee = useUpdateEmployee();
+
+  const [fullName, setFullName] = useState('');
+  const [designation, setDesignation] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [department, setDepartment] = useState<string | null>(null);
+
+  // Prefill form when employee data loads
+  React.useEffect(() => {
+    if (employee) {
+      setFullName(`${employee.firstName} ${employee.lastName}`);
+      setDesignation(employee.designation ?? '');
+      setPhone(employee.phone ?? '');
+      setEmail(employee.email ?? '');
+      setDepartment(employee.department ?? null);
+    }
+  }, [employee]);
+
+  const handleSubmit = () => {
+    if (!fullName.trim()) {
+      Alert.alert('Error', 'Please enter full name');
+      return;
+    }
+
+    if (!phone.trim()) {
+      Alert.alert('Error', 'Please enter phone number');
+      return;
+    }
+
+    updateEmployee.mutate(
+      {
+        id: id ?? '',
+        data: {
+          name: fullName.trim(),
+          phone: phone.trim(),
+          email: email.trim() || undefined,
+          designation: designation.trim() || undefined,
+        },
+      },
+      {
+        onSuccess: () => {
+          Alert.alert('Success', 'Employee updated successfully', [
+            {
+              text: 'OK',
+              onPress: () => router.back(),
+            },
+          ]);
+        },
+        onError: (error) => {
+          Alert.alert('Error', getErrorMessage(error));
+        },
+      },
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
+        <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+          <View style={styles.header}>
+            <TouchableOpacity hitSlop={12} onPress={() => router.back()}>
+              <Icon name="back" size="lg" color={Colors.textOnPrimary} />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Edit Employee</Text>
+            <View style={styles.headerSpacer} />
+          </View>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+          </View>
+          <AdminBottomNav activeIndex={3} />
+        </SafeAreaView>
+      </>
+    );
+  }
+
+  if (!employee) {
+    return (
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
+        <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+          <View style={styles.header}>
+            <TouchableOpacity hitSlop={12} onPress={() => router.back()}>
+              <Icon name="back" size="lg" color={Colors.textOnPrimary} />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Edit Employee</Text>
+            <View style={styles.headerSpacer} />
+          </View>
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>Employee not found.</Text>
+          </View>
+          <AdminBottomNav activeIndex={3} />
+        </SafeAreaView>
+      </>
+    );
+  }
 
   return (
     <>
@@ -78,20 +155,13 @@ export default function EditEmployeeScreen(): React.ReactElement {
           <Text style={styles.sectionLabel}>PERSONAL INFO</Text>
 
           <Input
-            label="Full Name"
+            label="Full Name *"
             value={fullName}
             onChangeText={setFullName}
             placeholder="Enter full name"
             autoCapitalize="words"
             containerStyle={styles.field}
-          />
-          <Input
-            label="Employee ID"
-            value={empId}
-            onChangeText={setEmpId}
-            placeholder="e.g. ASA-2024-001"
-            autoCapitalize="characters"
-            containerStyle={styles.field}
+            editable={!updateEmployee.isPending}
           />
           <Input
             label="Role / Designation"
@@ -100,59 +170,46 @@ export default function EditEmployeeScreen(): React.ReactElement {
             placeholder="e.g. Site Engineer"
             autoCapitalize="words"
             containerStyle={styles.field}
+            editable={!updateEmployee.isPending}
           />
           <Input
-            label="Phone Number"
+            label="Phone Number *"
             value={phone}
             onChangeText={setPhone}
             placeholder="Enter phone number"
             keyboardType="phone-pad"
             containerStyle={styles.field}
+            editable={!updateEmployee.isPending}
           />
           <Input
-            label="Email"
+            label="Email (Optional)"
             value={email}
             onChangeText={setEmail}
             placeholder="Enter email address"
             keyboardType="email-address"
             containerStyle={styles.field}
+            editable={!updateEmployee.isPending}
           />
 
           {/* Section 2 — Employment */}
           <Text style={[styles.sectionLabel, styles.sectionGap]}>EMPLOYMENT</Text>
 
-          <Dropdown
-            label="Department"
-            value={department}
-            options={DEPARTMENTS}
-            onSelect={setDepartment}
-            placeholder="Select department"
-            containerStyle={styles.field}
-          />
-          <Dropdown
-            label="Status"
-            value={status}
-            options={STATUSES}
-            onSelect={setStatus}
-            containerStyle={styles.field}
-          />
-          <Input
-            label="Join Date"
-            value={joinDate}
-            onChangeText={setJoinDate}
-            placeholder="DD-MM-YYYY"
-            keyboardType="numeric"
-            containerStyle={styles.field}
-          />
+          <Text style={styles.note}>
+            Employee Code: {employee.employeeCode ?? 'N/A'}
+          </Text>
+          <Text style={styles.note}>
+            Status: {employee.status}
+          </Text>
+          <Text style={[styles.note, styles.noteSubtle]}>
+            Status can be changed from the employee detail screen.
+          </Text>
 
           {/* Footer */}
           <Button
-            label="Save Changes"
-            onPress={() => {
-              console.log('Save employee:', { id, fullName, empId, designation, phone, email, department, status, joinDate });
-              router.back();
-            }}
+            label={updateEmployee.isPending ? 'Saving...' : 'Save Changes'}
+            onPress={handleSubmit}
             style={styles.submitBtn}
+            disabled={updateEmployee.isPending}
           />
           <TouchableOpacity activeOpacity={0.7} onPress={() => router.back()} style={styles.cancelRow}>
             <Text style={styles.cancelText}>Cancel</Text>
@@ -200,11 +257,41 @@ const styles = StyleSheet.create({
 
   field: { marginBottom: Spacing[3] },
 
+  note: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.md,
+    color: Colors.textSecondary,
+    marginBottom: Spacing[2],
+  },
+  noteSubtle: {
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
+  },
+
   submitBtn: { marginTop: Spacing[5] },
   cancelRow: { alignItems: 'center', paddingVertical: Spacing[3] },
   cancelText: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.md,
     color: Colors.textMuted,
+  },
+
+  // Loading and empty states
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing[4],
+  },
+  emptyText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.base,
+    color: Colors.textMuted,
+    textAlign: 'center',
   },
 });

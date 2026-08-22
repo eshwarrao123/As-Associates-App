@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../../../src/components/ui/Button';
@@ -8,6 +8,8 @@ import { Card } from '../../../src/components/ui/Card';
 import { Input } from '../../../src/components/ui/Input';
 import { Avatar } from '../../../src/components/ui/Avatar';
 import { Dropdown } from '../../../src/components/ui/Dropdown';
+import { useCreateProject } from '../../../src/hooks/useAdminProjects';
+import { getErrorMessage } from '../../../src/services/api/errorHandler';
 import {
   BorderRadius,
   Colors,
@@ -53,6 +55,8 @@ const ENGINEERS: Engineer[] = [
 
 export default function NewProjectScreen(): React.ReactElement {
   const router = useRouter();
+  const createProject = useCreateProject();
+
   const [name, setName] = useState('');
   const [client, setClient] = useState<string | null>(null);
   const [address, setAddress] = useState('');
@@ -60,6 +64,9 @@ export default function NewProjectScreen(): React.ReactElement {
   const [team, setTeam] = useState<string[]>([]);
   const [search, setSearch] = useState('');
   const [description, setDescription] = useState('');
+  const [startDate, setStartDate] = useState<Date>(new Date());
+  const [endDate, setEndDate] = useState<Date | null>(null);
+  const [budget, setBudget] = useState('');
 
   const toggleService = (s: string) =>
     setServices((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
@@ -69,6 +76,38 @@ export default function NewProjectScreen(): React.ReactElement {
   const filteredEngineers = ENGINEERS.filter((e) =>
     e.name.toLowerCase().includes(search.trim().toLowerCase())
   );
+
+  const handleSubmit = () => {
+    // Basic validation
+    if (!name.trim()) {
+      Alert.alert('Error', 'Project name is required');
+      return;
+    }
+    if (!address.trim()) {
+      Alert.alert('Error', 'Site address is required');
+      return;
+    }
+
+    const formData = {
+      name: name.trim(),
+      description: description.trim() || undefined,
+      location: address.trim(),
+      startDate: startDate.toISOString().split('T')[0],
+      endDate: endDate ? endDate.toISOString().split('T')[0] : undefined,
+      budget: budget.trim() ? parseFloat(budget.replace(/[^0-9.]/g, '')) : undefined,
+    };
+
+    createProject.mutate(formData, {
+      onSuccess: () => {
+        Alert.alert('Success', 'Project created!', [
+          { text: 'OK', onPress: () => router.back() },
+        ]);
+      },
+      onError: (err) => {
+        Alert.alert('Error', getErrorMessage(err));
+      },
+    });
+  };
 
   return (
     <>
@@ -96,6 +135,7 @@ export default function NewProjectScreen(): React.ReactElement {
               placeholder="e.g. ICICI Bank HQ - Andheri"
               value={name}
               onChangeText={setName}
+              editable={!createProject.isPending}
             />
             <Dropdown
               label="Client"
@@ -109,6 +149,15 @@ export default function NewProjectScreen(): React.ReactElement {
               placeholder="Full site address"
               value={address}
               onChangeText={setAddress}
+              editable={!createProject.isPending}
+            />
+            <Input
+              label="Budget (₹)"
+              placeholder="e.g. 2400000"
+              value={budget}
+              onChangeText={setBudget}
+              keyboardType="numeric"
+              editable={!createProject.isPending}
             />
             <View style={styles.dateRow}>
               <View style={styles.flex1}>
@@ -140,6 +189,7 @@ export default function NewProjectScreen(): React.ReactElement {
                     activeOpacity={0.7}
                     style={styles.serviceItem}
                     onPress={() => toggleService(s)}
+                    disabled={createProject.isPending}
                   >
                     <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
                       {checked && <Text style={styles.checkmark}>✓</Text>}
@@ -160,6 +210,7 @@ export default function NewProjectScreen(): React.ReactElement {
               onChangeText={setSearch}
               placeholder="Search engineers..."
               placeholderTextColor={Colors.textMuted}
+              editable={!createProject.isPending}
             />
             {filteredEngineers.map((e) => {
               const selected = team.includes(e.id);
@@ -169,6 +220,7 @@ export default function NewProjectScreen(): React.ReactElement {
                   activeOpacity={0.7}
                   onPress={() => toggleTeam(e.id)}
                   style={[styles.engineerRow, selected && styles.engineerRowActive]}
+                  disabled={createProject.isPending}
                 >
                   <Avatar initials={e.initials} size="sm" />
                   <View style={styles.flex1}>
@@ -194,10 +246,15 @@ export default function NewProjectScreen(): React.ReactElement {
               placeholderTextColor={Colors.textMuted}
               multiline
               textAlignVertical="top"
+              editable={!createProject.isPending}
             />
           </Card>
 
-          <Button label="Create Project" onPress={() => router.back()} />
+          <Button
+            label={createProject.isPending ? "Creating..." : "Create Project"}
+            onPress={handleSubmit}
+            disabled={createProject.isPending}
+          />
         </ScrollView>
       </SafeAreaView>
     </>

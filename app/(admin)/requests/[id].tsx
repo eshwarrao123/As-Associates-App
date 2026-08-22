@@ -1,11 +1,14 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Badge } from '../../../src/components/ui/Badge';
 import { Card } from '../../../src/components/ui/Card';
 import { Icon } from '../../../src/components/ui/Icon';
+import { Button } from '../../../src/components/ui/Button';
 import { AdminBottomNav } from '../../../src/components/ui/AdminBottomNav';
+import { useAdminRequest, useApproveRequest, useRejectRequest } from '../../../src/hooks/useAdminRequests';
+import { getErrorMessage } from '../../../src/services/api/errorHandler';
 import {
   BorderRadius,
   Colors,
@@ -17,108 +20,170 @@ import {
 } from '../../../src/constants/tokens';
 import type { BadgeVariant } from '../../../src/types';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-type ReqStatus = 'pending' | 'approved' | 'rejected';
-type ReqType   = 'Material' | 'Issue' | 'Support';
-type Priority  = 'Low' | 'Medium' | 'High';
+const TYPE_COLOR: Record<string, string> = {
+  MATERIAL: Colors.warning,
+  ISSUE: Colors.danger,
+  SUPPORT: Colors.primary,
+  LEAVE: Colors.primary,
+  ADVANCE: Colors.warning,
+  OTHER: Colors.textMuted,
+};
 
-interface RequestDetail {
-  id: string;
-  reqId: string;
-  type: ReqType;
-  typeColor: string;
-  name: string;
-  role: string;
-  project: string;
-  subject: string;
-  priority: Priority;
-  status: ReqStatus;
-  date: string;
-  description: string;
+function getTypeColor(type: string): string {
+  return TYPE_COLOR[type.toUpperCase()] || Colors.textMuted;
 }
 
-const TYPE_COLOR: Record<ReqType, string> = {
-  Material: Colors.warning,
-  Issue:    Colors.danger,
-  Support:  Colors.primary,
-};
+function mapStatusToBadge(status: string): BadgeVariant {
+  switch (status) {
+    case 'PENDING':
+      return 'pending';
+    case 'APPROVED':
+      return 'approved';
+    case 'REJECTED':
+      return 'rejected';
+    default:
+      return 'pending';
+  }
+}
 
-const PRIORITY_COLOR: Record<Priority, string> = {
-  Low:    Colors.success,
-  Medium: Colors.warning,
-  High:   Colors.danger,
-};
-
-const REQUESTS: RequestDetail[] = [
-  {
-    id: '1', reqId: 'REQ-0001',
-    type: 'Material', typeColor: TYPE_COLOR.Material,
-    name: 'Rahul Kumar', role: 'Site Engineer',
-    project: 'ICICI Bank HQ', subject: 'Cement Bags x50',
-    priority: 'High', status: 'pending',
-    date: '02 Aug 2026',
-    description: 'Requesting 50 bags of OPC 53 grade cement for Phase 2 slab work. Current stock is insufficient and work is scheduled to begin on 05 Aug. Immediate procurement required to avoid site delays.',
-  },
-  {
-    id: '2', reqId: 'REQ-0002',
-    type: 'Issue', typeColor: TYPE_COLOR.Issue,
-    name: 'Anita Sharma', role: 'Civil Engineer',
-    project: 'Axis Bank - Bandra', subject: 'Electrical wiring fault',
-    priority: 'High', status: 'pending',
-    date: '02 Aug 2026',
-    description: 'A short circuit was detected in the second-floor electrical conduit during routine inspection. The affected section spans approximately 12 metres and poses a safety risk. Work in that zone has been halted pending repair.',
-  },
-  {
-    id: '3', reqId: 'REQ-0003',
-    type: 'Support', typeColor: TYPE_COLOR.Support,
-    name: 'Vikram Patel', role: 'Electrical Engineer',
-    project: 'HDFC Bank - Powai', subject: 'Need extra manpower',
-    priority: 'Medium', status: 'approved',
-    date: '01 Aug 2026',
-    description: 'The project timeline has been compressed by one week per client request. We require 3 additional skilled labourers for the next 10 days to meet the revised schedule without compromising quality.',
-  },
-  {
-    id: '4', reqId: 'REQ-0004',
-    type: 'Material', typeColor: TYPE_COLOR.Material,
-    name: 'Priya Joshi', role: 'Project Lead',
-    project: 'Tech Park Phase 1', subject: 'Steel rods x200',
-    priority: 'Medium', status: 'approved',
-    date: '31 Jul 2026',
-    description: 'Requesting 200 units of Fe-500 TMT steel rods (12mm diameter) for column reinforcement at grid lines C4–C8. Structural drawings approved by consultant. Vendor quotation attached for reference.',
-  },
-  {
-    id: '5', reqId: 'REQ-0005',
-    type: 'Issue', typeColor: TYPE_COLOR.Issue,
-    name: 'Manish Rao', role: 'Junior Engineer',
-    project: 'Lodha Allumount', subject: 'Water seepage in basement',
-    priority: 'Low', status: 'rejected',
-    date: '30 Jul 2026',
-    description: 'Minor water seepage observed along the north wall of the basement. The issue is isolated to a 2-metre section and appears to be linked to an existing crack in the waterproofing membrane. Monitoring ongoing.',
-  },
-  {
-    id: '6', reqId: 'REQ-0006',
-    type: 'Support', typeColor: TYPE_COLOR.Support,
-    name: 'Rahul Kumar', role: 'Site Engineer',
-    project: 'ICICI Bank HQ', subject: 'Site inspection request',
-    priority: 'Low', status: 'pending',
-    date: '29 Jul 2026',
-    description: 'Requesting a formal site inspection by the admin team before the next client review on 10 Aug. The purpose is to document current progress and identify any open snag items that need resolution prior to the client walkthrough.',
-  },
-];
-
-const STATUS_BADGE_VARIANT: Record<ReqStatus, BadgeVariant> = {
-  pending:  'pending',
-  approved: 'approved',
-  rejected: 'rejected',
-};
+function formatDate(isoDate: string): string {
+  const date = new Date(isoDate);
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function RequestDetailScreen(): React.ReactElement {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const req = REQUESTS.find((r) => r.id === id) ?? REQUESTS[0];
+
+  const { data: request, isLoading, error } = useAdminRequest(id ?? '');
+  const approveRequest = useApproveRequest();
+  const rejectRequest = useRejectRequest();
+
+  const handleApprove = () => {
+    if (!request) return;
+
+    approveRequest.mutate(request.id, {
+      onSuccess: () => {
+        Alert.alert('Success', 'Request approved', [
+          { text: 'OK', onPress: () => router.back() },
+        ]);
+      },
+      onError: (err) => {
+        Alert.alert('Error', getErrorMessage(err));
+      },
+    });
+  };
+
+  const handleReject = () => {
+    if (!request) return;
+
+    if (Platform.OS === 'ios') {
+      Alert.prompt(
+        'Reject Request',
+        'Enter a reason (optional):',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Reject',
+            style: 'destructive',
+            onPress: (reason) => {
+              rejectRequest.mutate(
+                { id: request.id, reason },
+                {
+                  onSuccess: () => {
+                    Alert.alert('Success', 'Request rejected', [
+                      { text: 'OK', onPress: () => router.back() },
+                    ]);
+                  },
+                  onError: (err) => {
+                    Alert.alert('Error', getErrorMessage(err));
+                  },
+                },
+              );
+            },
+          },
+        ],
+        'plain-text',
+      );
+    } else {
+      Alert.alert('Reject Request', 'Reject this request?', [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reject',
+          style: 'destructive',
+          onPress: () => {
+            rejectRequest.mutate(
+              { id: request.id },
+              {
+                onSuccess: () => {
+                  Alert.alert('Success', 'Request rejected', [
+                    { text: 'OK', onPress: () => router.back() },
+                  ]);
+                },
+                onError: (err) => {
+                  Alert.alert('Error', getErrorMessage(err));
+                },
+              },
+            );
+          },
+        },
+      ]);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
+        <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+          <View style={styles.header}>
+            <TouchableOpacity hitSlop={12} onPress={() => router.back()}>
+              <Icon name="back" size="lg" color={Colors.textOnPrimary} />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Request Details</Text>
+          </View>
+          <View style={styles.loading}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+          </View>
+          <AdminBottomNav activeIndex={2} />
+        </SafeAreaView>
+      </>
+    );
+  }
+
+  if (error || !request) {
+    return (
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
+        <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+          <View style={styles.header}>
+            <TouchableOpacity hitSlop={12} onPress={() => router.back()}>
+              <Icon name="back" size="lg" color={Colors.textOnPrimary} />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Request Details</Text>
+          </View>
+          <View style={styles.loading}>
+            <Text style={styles.errorText}>Failed to load request</Text>
+            <Button label="Go Back" onPress={() => router.back()} />
+          </View>
+          <AdminBottomNav activeIndex={2} />
+        </SafeAreaView>
+      </>
+    );
+  }
+
+  const typeColor = getTypeColor(request.type);
+  const userName = request.user
+    ? `${request.user.firstName} ${request.user.lastName}`
+    : 'Unknown';
+  const userCode = request.user?.employeeCode || 'N/A';
+  const badgeVariant = mapStatusToBadge(request.status);
+  const isPending = request.status === 'PENDING';
+  const isProcessing = approveRequest.isPending || rejectRequest.isPending;
 
   return (
     <>
@@ -136,60 +201,83 @@ export default function RequestDetailScreen(): React.ReactElement {
           {/* ── Section 1: Request Info ──────────────────────────────────── */}
           <Card style={styles.infoCard}>
             {/* REQ-XXXX in amber */}
-            <Text style={styles.reqId}>{req.reqId}</Text>
+            <Text style={styles.reqId}>REQ-{request.id.slice(0, 8).toUpperCase()}</Text>
 
-            {/* Type chip + priority pill */}
+            {/* Type chip */}
             <View style={styles.chipsRow}>
-              <View style={[styles.typeChip, { backgroundColor: withAlpha(req.typeColor, 0.09) }]}>
-                <Text style={[styles.typeChipText, { color: req.typeColor }]}>{req.type}</Text>
-              </View>
-              <View style={[styles.priorityPill, { borderColor: PRIORITY_COLOR[req.priority] }]}>
-                <Text style={[styles.priorityText, { color: PRIORITY_COLOR[req.priority] }]}>
-                  {req.priority} Priority
-                </Text>
+              <View style={[styles.typeChip, { backgroundColor: withAlpha(typeColor, 0.09) }]}>
+                <Text style={[styles.typeChipText, { color: typeColor }]}>{request.type}</Text>
               </View>
             </View>
 
             {/* Subject heading */}
-            <Text style={styles.subject}>{req.subject}</Text>
+            <Text style={styles.subject}>{request.description}</Text>
 
             {/* Meta rows */}
             <View style={styles.metaBlock}>
               <View style={styles.metaRow}>
                 <Text style={styles.metaLabel}>Submitted by</Text>
-                <Text style={styles.metaValue}>{req.name} · {req.role}</Text>
-              </View>
-              <View style={styles.metaRow}>
-                <Text style={styles.metaLabel}>Project</Text>
-                <Text style={styles.metaValue}>{req.project}</Text>
+                <Text style={styles.metaValue}>{userName} · {userCode}</Text>
               </View>
               <View style={styles.metaRow}>
                 <Text style={styles.metaLabel}>Date</Text>
-                <Text style={styles.metaValue}>{req.date}</Text>
+                <Text style={styles.metaValue}>{formatDate(request.createdAt)}</Text>
               </View>
+              {request.reviewedBy && (
+                <View style={styles.metaRow}>
+                  <Text style={styles.metaLabel}>Reviewed by</Text>
+                  <Text style={styles.metaValue}>
+                    {request.reviewer
+                      ? `${request.reviewer.firstName} ${request.reviewer.lastName}`
+                      : 'Admin'}
+                  </Text>
+                </View>
+              )}
+              {request.reviewedAt && (
+                <View style={styles.metaRow}>
+                  <Text style={styles.metaLabel}>Reviewed at</Text>
+                  <Text style={styles.metaValue}>{formatDate(request.reviewedAt)}</Text>
+                </View>
+              )}
             </View>
           </Card>
 
-          {/* ── Section 2: Description ───────────────────────────────────── */}
-          <Card noPadding style={styles.sectionCard}>
-            <Text style={styles.sectionLabel}>DESCRIPTION</Text>
-            <Text style={styles.description}>{req.description}</Text>
-          </Card>
+          {/* ── Section 2: Review Note (if exists) ──────────────────────── */}
+          {request.reviewNote && (
+            <Card noPadding style={styles.sectionCard}>
+              <Text style={styles.sectionLabel}>REVIEW NOTE</Text>
+              <Text style={styles.description}>{request.reviewNote}</Text>
+            </Card>
+          )}
 
           {/* ── Section 3: Status + actions ─────────────────────────────── */}
           <Card noPadding style={styles.sectionCard}>
             <Text style={styles.sectionLabel}>STATUS</Text>
             <View style={styles.statusRow}>
-              <Badge variant={STATUS_BADGE_VARIANT[req.status]} label={req.status.charAt(0).toUpperCase() + req.status.slice(1)} />
+              <Badge variant={badgeVariant} />
             </View>
 
-            {req.status === 'pending' && (
+            {isPending && (
               <View style={styles.actionRow}>
-                <TouchableOpacity activeOpacity={0.85} style={[styles.actionBtn, styles.approveBtn]}>
-                  <Text style={styles.approveText}>✓ Approve</Text>
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  style={[styles.actionBtn, styles.approveBtn]}
+                  onPress={handleApprove}
+                  disabled={isProcessing}
+                >
+                  <Text style={styles.approveText}>
+                    {approveRequest.isPending ? 'Approving...' : '✓ Approve'}
+                  </Text>
                 </TouchableOpacity>
-                <TouchableOpacity activeOpacity={0.85} style={[styles.actionBtn, styles.rejectBtn]}>
-                  <Text style={styles.rejectText}>✕ Reject</Text>
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  style={[styles.actionBtn, styles.rejectBtn]}
+                  onPress={handleReject}
+                  disabled={isProcessing}
+                >
+                  <Text style={styles.rejectText}>
+                    {rejectRequest.isPending ? 'Rejecting...' : '✕ Reject'}
+                  </Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -206,6 +294,12 @@ export default function RequestDetailScreen(): React.ReactElement {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
+  loading: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: Spacing[4] },
+  errorText: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.base,
+    color: Colors.textSecondary,
+  },
 
   header: {
     backgroundColor: Colors.primary,
@@ -239,13 +333,6 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   typeChipText: { fontFamily: FontFamily.medium, fontSize: FontSize.sm },
-  priorityPill: {
-    borderWidth: 1,
-    borderRadius: BorderRadius.badge,
-    paddingHorizontal: Spacing[2],
-    paddingVertical: 4,
-  },
-  priorityText: { fontFamily: FontFamily.medium, fontSize: FontSize.sm },
 
   subject: {
     fontFamily: FontFamily.bold,

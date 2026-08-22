@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Badge } from '../../src/components/ui/Badge';
 import { Card } from '../../src/components/ui/Card';
 import { AdminBottomNav } from '../../src/components/ui/AdminBottomNav';
+import { useAllRequests, useApproveRequest, useRejectRequest } from '../../src/hooks/useAdminRequests';
+import { getErrorMessage } from '../../src/services/api/errorHandler';
 import {
   BorderRadius,
   Colors,
@@ -15,51 +17,48 @@ import {
 } from '../../src/constants/tokens';
 import type { BadgeVariant } from '../../src/types';
 
-// ─── Types & mock data ────────────────────────────────────────────────────────
-
-type ReqStatus = 'pending' | 'approved' | 'rejected';
-type ReqType = 'Material' | 'Issue' | 'Support';
-type Priority = 'Low' | 'Medium' | 'High';
-
-interface AdminRequest {
-  id: string;
-  type: ReqType;
-  typeColor: string;
-  name: string;
-  project: string;
-  subject: string;
-  priority: Priority;
-  status: ReqStatus;
-}
-
-const TYPE_COLOR: Record<ReqType, string> = {
-  Material: Colors.warning,
-  Issue:    Colors.danger,
-  Support:  Colors.primary,
-};
-
-const PRIORITY_COLOR: Record<Priority, string> = {
-  Low:    Colors.success,
-  Medium: Colors.warning,
-  High:   Colors.danger,
-};
-
-const REQUESTS: AdminRequest[] = [
-  { id: '1', type: 'Material', typeColor: TYPE_COLOR.Material, name: 'Rahul Kumar',   project: 'ICICI Bank HQ',      subject: 'Cement Bags x50',            priority: 'High',   status: 'pending'  },
-  { id: '2', type: 'Issue',    typeColor: TYPE_COLOR.Issue,    name: 'Anita Sharma',  project: 'Axis Bank - Bandra', subject: 'Electrical wiring fault',    priority: 'High',   status: 'pending'  },
-  { id: '3', type: 'Support',  typeColor: TYPE_COLOR.Support,  name: 'Vikram Patel',  project: 'HDFC Bank - Powai',  subject: 'Need extra manpower',        priority: 'Medium', status: 'approved' },
-  { id: '4', type: 'Material', typeColor: TYPE_COLOR.Material, name: 'Priya Joshi',   project: 'Tech Park Phase 1',  subject: 'Steel rods x200',            priority: 'Medium', status: 'approved' },
-  { id: '5', type: 'Issue',    typeColor: TYPE_COLOR.Issue,    name: 'Manish Rao',    project: 'Lodha Allumount',    subject: 'Water seepage in basement',  priority: 'Low',    status: 'rejected' },
-  { id: '6', type: 'Support',  typeColor: TYPE_COLOR.Support,  name: 'Rahul Kumar',   project: 'ICICI Bank HQ',      subject: 'Site inspection request',    priority: 'Low',    status: 'pending'  },
-];
+// ─── Types & Helpers ──────────────────────────────────────────────────────────
 
 type Filter = 'All' | 'Pending' | 'Approved' | 'Rejected';
 const FILTERS: Filter[] = ['All', 'Pending', 'Approved', 'Rejected'];
-const FILTER_STATUS: Record<Exclude<Filter, 'All'>, ReqStatus> = {
-  Pending:  'pending',
-  Approved: 'approved',
-  Rejected: 'rejected',
+
+const FILTER_TO_API_STATUS: Record<Filter, string | undefined> = {
+  All: undefined,
+  Pending: 'PENDING',
+  Approved: 'APPROVED',
+  Rejected: 'REJECTED',
 };
+
+const TYPE_COLOR: Record<string, string> = {
+  MATERIAL: Colors.warning,
+  ISSUE: Colors.danger,
+  SUPPORT: Colors.primary,
+  LEAVE: Colors.primary,
+  ADVANCE: Colors.warning,
+  OTHER: Colors.textMuted,
+};
+
+function getTypeColor(type: string): string {
+  return TYPE_COLOR[type.toUpperCase()] || Colors.textMuted;
+}
+
+function mapStatusToBadge(status: string): BadgeVariant {
+  switch (status) {
+    case 'PENDING':
+      return 'pending';
+    case 'APPROVED':
+      return 'approved';
+    case 'REJECTED':
+      return 'rejected';
+    default:
+      return 'pending';
+  }
+}
+
+function formatDate(isoDate: string): string {
+  const date = new Date(isoDate);
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -67,8 +66,38 @@ export default function AdminRequestsScreen(): React.ReactElement {
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>('All');
 
-  const filtered =
-    filter === 'All' ? REQUESTS : REQUESTS.filter((r) => r.status === FILTER_STATUS[filter]);
+  const apiStatus = FILTER_TO_API_STATUS[filter];
+  const { data: requests, isLoading, refetch } = useAllRequests(apiStatus);
+  const approveRequest = useApproveRequest();
+  const rejectRequest = useRejectRequest();
+
+  const handleApprove = (id: string) => {
+    approveRequest.mutate(id, {
+      onError: (err) => {
+        Alert.alert('Error', getErrorMessage(err));
+      },
+    });
+  };
+
+  const handleReject = (id: string) => {
+    Alert.alert('Reject Request', 'Reject this request?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Reject',
+        style: 'destructive',
+        onPress: () => {
+          rejectRequest.mutate(
+            { id },
+            {
+              onError: (err) => {
+                Alert.alert('Error', getErrorMessage(err));
+              },
+            },
+          );
+        },
+      },
+    ]);
+  };
 
   return (
     <>
@@ -97,55 +126,86 @@ export default function AdminRequestsScreen(): React.ReactElement {
         </View>
 
         <FlatList
-          data={filtered}
+          data={requests ?? []}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           ItemSeparatorComponent={() => <View style={styles.sep} />}
-          renderItem={({ item }) => (
-            <Card style={styles.reqCard}>
-              {/* Type chip row + priority pill */}
-              <View style={styles.topRow}>
-                <View style={[styles.dot, { backgroundColor: item.typeColor }]} />
-                <View style={[styles.typeChip, { backgroundColor: withAlpha(item.typeColor, 0.09) }]}>
-                  <Text style={[styles.typeChipText, { color: item.typeColor }]}>{item.type}</Text>
-                </View>
-                <View style={styles.flex1} />
-                <View style={[styles.priorityPill, { borderColor: PRIORITY_COLOR[item.priority] }]}>
-                  <Text style={[styles.priorityText, { color: PRIORITY_COLOR[item.priority] }]}>
-                    {item.priority}
-                  </Text>
-                </View>
+          refreshControl={
+            <RefreshControl refreshing={isLoading} onRefresh={refetch} colors={[Colors.primary]} />
+          }
+          ListEmptyComponent={
+            isLoading ? (
+              <View style={styles.loading}>
+                <ActivityIndicator size="large" color={Colors.primary} />
               </View>
+            ) : (
+              <View style={styles.empty}>
+                <Text style={styles.emptyText}>No requests found.</Text>
+              </View>
+            )
+          }
+          renderItem={({ item }) => {
+            const typeColor = getTypeColor(item.type);
+            const userName = item.user
+              ? `${item.user.firstName} ${item.user.lastName}`
+              : 'Unknown';
+            const badgeVariant = mapStatusToBadge(item.status);
 
-              {/* Card title — body-lg (16px/bold) per card spec §8 */}
-              <Text style={styles.subject}>{item.subject}</Text>
-              {/* Subtitle — body-md (14px/400) */}
-              <Text style={styles.meta}>{item.name} · {item.project}</Text>
+            return (
+              <Card style={styles.reqCard}>
+                {/* Type chip row */}
+                <View style={styles.topRow}>
+                  <View style={[styles.dot, { backgroundColor: typeColor }]} />
+                  <View style={[styles.typeChip, { backgroundColor: withAlpha(typeColor, 0.09) }]}>
+                    <Text style={[styles.typeChipText, { color: typeColor }]}>
+                      {item.type}
+                    </Text>
+                  </View>
+                  <View style={styles.flex1} />
+                </View>
 
-              {item.status === 'pending' ? (
-                <View style={styles.actionRow}>
-                  <TouchableOpacity activeOpacity={0.85} style={[styles.actionBtn, styles.approveBtn]}>
-                    <Text style={styles.approveText}>✓ Approve</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity activeOpacity={0.85} style={[styles.actionBtn, styles.rejectBtn]}>
-                    <Text style={styles.rejectText}>✕ Reject</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <View style={styles.statusRow}>
-                  <Badge variant={item.status} />
-                </View>
-              )}
-              <TouchableOpacity
-                activeOpacity={0.7}
-                style={styles.viewDetailsRow}
-                onPress={() => router.push(`/(admin)/requests/${item.id}` as never)}
-              >
-                <Text style={styles.viewDetailsText}>View Details →</Text>
-              </TouchableOpacity>
-            </Card>
-          )}
+                {/* Card title — body-lg (16px/bold) per card spec §8 */}
+                <Text style={styles.subject}>{item.description}</Text>
+                {/* Subtitle — body-md (14px/400) */}
+                <Text style={styles.meta}>
+                  {userName} · {formatDate(item.createdAt)}
+                </Text>
+
+                {item.status === 'PENDING' ? (
+                  <View style={styles.actionRow}>
+                    <TouchableOpacity
+                      activeOpacity={0.85}
+                      style={[styles.actionBtn, styles.approveBtn]}
+                      onPress={() => handleApprove(item.id)}
+                      disabled={approveRequest.isPending || rejectRequest.isPending}
+                    >
+                      <Text style={styles.approveText}>✓ Approve</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      activeOpacity={0.85}
+                      style={[styles.actionBtn, styles.rejectBtn]}
+                      onPress={() => handleReject(item.id)}
+                      disabled={approveRequest.isPending || rejectRequest.isPending}
+                    >
+                      <Text style={styles.rejectText}>✕ Reject</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.statusRow}>
+                    <Badge variant={badgeVariant} />
+                  </View>
+                )}
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  style={styles.viewDetailsRow}
+                  onPress={() => router.push(`/(admin)/requests/${item.id}` as never)}
+                >
+                  <Text style={styles.viewDetailsText}>View Details →</Text>
+                </TouchableOpacity>
+              </Card>
+            );
+          }}
         />
 
         <AdminBottomNav activeIndex={2} />
@@ -159,6 +219,14 @@ export default function AdminRequestsScreen(): React.ReactElement {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
   flex1: { flex: 1 },
+  loading: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: Spacing[8] },
+  empty: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: Spacing[8] },
+  emptyText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.md,
+    color: Colors.textMuted,
+    textAlign: 'center',
+  },
 
   // Top app bar — 56px, navy, flat (no shadow per DESIGN.md §11)
   header: {
@@ -213,17 +281,6 @@ const styles = StyleSheet.create({
   },
   // label-sm: 12px / 500
   typeChipText: {
-    fontFamily: FontFamily.medium,
-    fontSize: FontSize.sm,
-  },
-  priorityPill: {
-    borderWidth: 1,
-    borderRadius: BorderRadius.badge,
-    paddingHorizontal: Spacing[2],
-    paddingVertical: 3,
-  },
-  // label-sm: 12px / 500
-  priorityText: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.sm,
   },

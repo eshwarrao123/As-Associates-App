@@ -1,5 +1,13 @@
 import React, { useState } from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  ActivityIndicator,
+  RefreshControl,
+} from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar } from '../../../src/components/ui/Avatar';
@@ -9,43 +17,35 @@ import { ProgressBar } from '../../../src/components/ui/ProgressBar';
 import { AdminBottomNav } from '../../../src/components/ui/AdminBottomNav';
 import { BorderRadius, Colors, FontFamily, FontSize, Spacing } from '../../../src/constants/tokens';
 import type { BadgeVariant } from '../../../src/types';
+import { useAllProjects } from '../../../src/hooks/useAdminProjects';
 
 // ─── Types & mock data ────────────────────────────────────────────────────────
 
 type ProjectStatus = 'ongoing' | 'completed' | 'onhold';
 
-interface AdminProject {
-  id: string;
-  name: string;
-  client: string;
-  city: string;
-  status: ProjectStatus;
-  progress: number;
-  engineers: string[];
+// Filter tabs
+type Filter = 'All' | 'Ongoing' | 'Completed' | 'Upcoming';
+const FILTERS: Filter[] = ['All', 'Ongoing', 'Completed', 'Upcoming'];
+
+// Map API status to filter status
+function mapApiStatusToFilter(status: string): ProjectStatus {
+  switch (status) {
+    case 'ACTIVE':
+      return 'ongoing';
+    case 'COMPLETED':
+      return 'completed';
+    case 'ON_HOLD':
+      return 'onhold';
+    default:
+      return 'ongoing';
+  }
 }
 
-const PROJECTS: AdminProject[] = [
-  { id: '1', name: 'ICICI Bank HQ - Andheri', client: 'ICICI Bank', city: 'Mumbai', status: 'ongoing', progress: 65, engineers: ['RK', 'AS', 'VP'] },
-  { id: '2', name: 'Axis Bank - Bandra', client: 'Axis Bank', city: 'Mumbai', status: 'ongoing', progress: 40, engineers: ['PJ', 'MR'] },
-  { id: '3', name: 'HDFC Bank - Powai', client: 'HDFC Bank', city: 'Mumbai', status: 'completed', progress: 100, engineers: ['RK'] },
-  { id: '4', name: 'Tech Park Phase 1', client: 'Commercial', city: 'Pune', status: 'onhold', progress: 30, engineers: ['AS', 'VP'] },
-  { id: '5', name: 'Lodha Allumount', client: 'Residential', city: 'Mumbai', status: 'completed', progress: 100, engineers: ['PJ'] },
-];
-
+// Map filter status to badge
 const STATUS_BADGE: Record<ProjectStatus, { variant: BadgeVariant; label: string }> = {
   ongoing: { variant: 'ongoing', label: 'Ongoing' },
   completed: { variant: 'completed', label: 'Completed' },
   onhold: { variant: 'onhold', label: 'On Hold' },
-};
-
-// ─── Filter tabs ──────────────────────────────────────────────────────────────
-
-type Filter = 'All' | 'Ongoing' | 'Completed' | 'Upcoming';
-const FILTERS: Filter[] = ['All', 'Ongoing', 'Completed', 'Upcoming'];
-const FILTER_STATUS: Record<Exclude<Filter, 'All'>, ProjectStatus> = {
-  Ongoing: 'ongoing',
-  Completed: 'completed',
-  Upcoming: 'upcoming',
 };
 
 // ─── Avatar stack ─────────────────────────────────────────────────────────────
@@ -68,9 +68,38 @@ const AvatarStack: React.FC<{ initials: string[] }> = ({ initials }) => (
 export default function AdminProjectsScreen(): React.ReactElement {
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>('All');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const filtered =
-    filter === 'All' ? PROJECTS : PROJECTS.filter((p) => p.status === FILTER_STATUS[filter]);
+  // Fetch projects from API
+  const { data: projectData, isLoading, refetch } = useAllProjects(1);
+
+  // Handle pull-to-refresh
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await refetch();
+    setIsRefreshing(false);
+  };
+
+  // Map API data to component format
+  const projects = projectData?.data.map((proj) => ({
+    id: proj.id,
+    name: proj.name,
+    client: proj.clientName,
+    city: proj.location,
+    status: mapApiStatusToFilter(proj.status),
+    progress: proj.progressPercent,
+    engineers: [], // Will be populated from assignments API when needed
+  })) ?? [];
+
+  // Client-side filtering
+  const filtered = filter === 'All'
+    ? projects
+    : projects.filter((p) => {
+        if (filter === 'Ongoing') return p.status === 'ongoing';
+        if (filter === 'Completed') return p.status === 'completed';
+        if (filter === 'Upcoming') return p.status === 'onhold'; // Map 'Upcoming' to onhold
+        return true;
+      });
 
   return (
     <>
@@ -109,6 +138,20 @@ export default function AdminProjectsScreen(): React.ReactElement {
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           ItemSeparatorComponent={() => <View style={styles.sep} />}
+          refreshControl={
+            <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
+          }
+          ListEmptyComponent={() =>
+            isLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={Colors.primary} />
+              </View>
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>No projects found.</Text>
+              </View>
+            )
+          }
           renderItem={({ item }) => (
             <Card style={styles.projectCard}>
               <View style={styles.cardRow1}>
@@ -124,7 +167,11 @@ export default function AdminProjectsScreen(): React.ReactElement {
                 <Text style={styles.pct}>{item.progress}%</Text>
               </View>
               <View style={styles.cardRow4}>
-                <AvatarStack initials={item.engineers} />
+                {item.engineers.length > 0 ? (
+                  <AvatarStack initials={item.engineers} />
+                ) : (
+                  <Text style={styles.noTeam}>No team assigned</Text>
+                )}
                 <TouchableOpacity
                   activeOpacity={0.7}
                   onPress={() => router.push(`/(admin)/projects/${item.id}` as never)}
@@ -256,4 +303,28 @@ const styles = StyleSheet.create({
     borderColor: Colors.surface,
   },
   stackOverlap: { marginLeft: -8 },
+
+  // Loading and empty states
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing[8],
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing[8],
+  },
+  emptyText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.base,
+    color: Colors.textMuted,
+  },
+  noTeam: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
+  },
 });

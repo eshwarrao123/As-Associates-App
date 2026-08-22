@@ -1,5 +1,12 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  ActivityIndicator,
+} from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Badge } from '../../../../src/components/ui/Badge';
@@ -15,65 +22,35 @@ import {
   Spacing,
 } from '../../../../src/constants/tokens';
 import type { BadgeVariant } from '../../../../src/types';
+import { useEmployee, useEmployeeProjects } from '../../../../src/hooks/useEmployees';
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
-
-interface EmployeeMeta {
-  id: string;
-  name: string;
+// Map project status to BadgeVariant
+function mapProjectStatusToBadge(status: string): BadgeVariant {
+  switch (status) {
+    case 'ACTIVE':
+      return 'approved';
+    case 'COMPLETED':
+      return 'completed';
+    case 'ON_HOLD':
+      return 'pending';
+    default:
+      return 'pending';
+  }
 }
 
-const EMPLOYEE_NAMES: EmployeeMeta[] = [
-  { id: '1', name: 'Rahul Kumar' },
-  { id: '2', name: 'Anita Sharma' },
-  { id: '3', name: 'Vikram Patel' },
-  { id: '4', name: 'Priya Joshi' },
-  { id: '5', name: 'Manish Rao' },
-];
-
-interface Project {
-  id: string;
-  name: string;
-  client: string;
-  location: string;
-  progress: number;
-  status: BadgeVariant;
-  statusLabel: string;
-  assignedIds: string[];
+// Get status label
+function getStatusLabel(status: string): string {
+  switch (status) {
+    case 'ACTIVE':
+      return 'Active';
+    case 'COMPLETED':
+      return 'Completed';
+    case 'ON_HOLD':
+      return 'On Hold';
+    default:
+      return 'Unknown';
+  }
 }
-
-const ALL_PROJECTS: Project[] = [
-  {
-    id: 'p1', name: 'City Center Plaza',
-    client: 'ICICI Bank', location: 'Mumbai, MH',
-    progress: 75, status: 'approved', statusLabel: 'Active',
-    assignedIds: ['1', '2'],
-  },
-  {
-    id: 'p2', name: 'Riverside Apartments',
-    client: 'Axis Bank', location: 'Pune, MH',
-    progress: 30, status: 'pending', statusLabel: 'On Hold',
-    assignedIds: ['1', '3', '5'],
-  },
-  {
-    id: 'p3', name: 'Tech Park Hub',
-    client: 'HDFC Bank', location: 'Powai, MH',
-    progress: 92, status: 'approved', statusLabel: 'Active',
-    assignedIds: ['1', '3', '4'],
-  },
-  {
-    id: 'p4', name: 'Metro Transit Hub',
-    client: 'SBI', location: 'Thane, MH',
-    progress: 15, status: 'pending', statusLabel: 'Planning',
-    assignedIds: ['2', '4'],
-  },
-  {
-    id: 'p5', name: 'Harbour View Complex',
-    client: 'Kotak Bank', location: 'Nariman Point, MH',
-    progress: 48, status: 'pending', statusLabel: 'Planning',
-    assignedIds: ['4'],
-  },
-];
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -81,8 +58,13 @@ export default function EmployeeProjectsScreen(): React.ReactElement {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  const employee = EMPLOYEE_NAMES.find((e) => e.id === id) ?? EMPLOYEE_NAMES[0];
-  const projects = ALL_PROJECTS.filter((p) => p.assignedIds.includes(id ?? ''));
+  // Fetch employee and projects data
+  const { data: employee, isLoading: isLoadingEmployee } = useEmployee(id ?? '');
+  const { data: projects, isLoading: isLoadingProjects } = useEmployeeProjects(id ?? '');
+
+  const employeeName = employee
+    ? `${employee.firstName} ${employee.lastName}`
+    : 'Employee';
 
   return (
     <>
@@ -93,45 +75,57 @@ export default function EmployeeProjectsScreen(): React.ReactElement {
             <Icon name="back" size="lg" color={Colors.textOnPrimary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle} numberOfLines={1}>
-            {employee.name}'s Projects
+            {employeeName}'s Projects
           </Text>
         </View>
 
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <Text style={styles.countLabel}>
-            {projects.length} project{projects.length !== 1 ? 's' : ''} assigned
-          </Text>
+          {isLoadingProjects ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={Colors.primary} />
+            </View>
+          ) : !projects || projects.length === 0 ? (
+            <>
+              <Text style={styles.countLabel}>0 projects assigned</Text>
+              <Text style={styles.emptyText}>No projects assigned to this employee.</Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.countLabel}>
+                {projects.length} project{projects.length !== 1 ? 's' : ''} assigned
+              </Text>
 
-          {projects.map((p) => (
-            <Card key={p.id} style={styles.projectCard}>
-              <View style={styles.cardTop}>
-                <Text style={styles.projectName} numberOfLines={1}>{p.name}</Text>
-                <Badge variant={p.status} label={p.statusLabel} />
-              </View>
+              {projects.map((p) => (
+                <Card key={p.id} style={styles.projectCard}>
+                  <View style={styles.cardTop}>
+                    <Text style={styles.projectName} numberOfLines={1}>{p.name}</Text>
+                    <Badge
+                      variant={mapProjectStatusToBadge(p.status)}
+                      label={getStatusLabel(p.status)}
+                    />
+                  </View>
 
-              <View style={styles.metaRow}>
-                <Icon name="clientOutline" size="sm" color={Colors.textMuted} />
-                <Text style={styles.metaText}>{p.client}</Text>
-              </View>
-              <View style={styles.metaRow}>
-                <Icon name="locationOutline" size="sm" color={Colors.textMuted} />
-                <Text style={styles.metaText}>{p.location}</Text>
-              </View>
+                  <View style={styles.metaRow}>
+                    <Icon name="clientOutline" size="sm" color={Colors.textMuted} />
+                    <Text style={styles.metaText}>{p.clientName}</Text>
+                  </View>
+                  <View style={styles.metaRow}>
+                    <Icon name="locationOutline" size="sm" color={Colors.textMuted} />
+                    <Text style={styles.metaText}>{p.location}</Text>
+                  </View>
 
-              <View style={styles.progressRow}>
-                <ProgressBar
-                  value={p.progress}
-                  showLabel={false}
-                  fillColor={Colors.primary}
-                  style={styles.bar}
-                />
-                <Text style={styles.pct}>{p.progress}%</Text>
-              </View>
-            </Card>
-          ))}
-
-          {projects.length === 0 && (
-            <Text style={styles.emptyText}>No projects assigned to this employee.</Text>
+                  <View style={styles.progressRow}>
+                    <ProgressBar
+                      value={p.progressPercent}
+                      showLabel={false}
+                      fillColor={Colors.primary}
+                      style={styles.bar}
+                    />
+                    <Text style={styles.pct}>{p.progressPercent}%</Text>
+                  </View>
+                </Card>
+              ))}
+            </>
           )}
         </ScrollView>
 
@@ -210,5 +204,13 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     textAlign: 'center',
     marginTop: Spacing[8],
+  },
+
+  // Loading state
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing[8],
   },
 });

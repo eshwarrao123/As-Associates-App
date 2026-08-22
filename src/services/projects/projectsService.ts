@@ -1,5 +1,6 @@
 import apiClient from '../api/client';
 import type { BadgeVariant } from '../../types';
+import type { PaginatedResponse } from '../api/types';
 
 // ─── Response Types ───────────────────────────────────────────────────────────
 
@@ -98,4 +99,125 @@ export async function getProjectById(id: string) {
     progress: project.progressPercent,
     team: project.team ?? [],
   };
+}
+
+/**
+ * Fetches all projects with pagination.
+ * @param page - Page number (default: 1)
+ * @param limit - Items per page (default: 10)
+ * @returns Paginated list of projects
+ */
+export async function getAllProjects(page: number = 1, limit: number = 10) {
+  const response = await apiClient.get<PaginatedResponse<ProjectResponse>>(
+    `/projects?page=${page}&limit=${limit}`,
+  );
+  return response.data;
+}
+
+/**
+ * Creates a new project.
+ * @param data - Project creation data
+ * @returns Created project
+ */
+export async function createProject(data: {
+  name: string;
+  description?: string;
+  location?: string;
+  startDate: string; // ISO date string
+  endDate?: string;
+  budget?: number;
+}) {
+  const response = await apiClient.post<{ data: ProjectResponse }>(
+    '/projects',
+    data,
+  );
+  return response.data.data;
+}
+
+/**
+ * Updates a project.
+ * @param id - Project ID
+ * @param data - Update data
+ * @returns Updated project
+ */
+export async function updateProject(
+  id: string,
+  data: {
+    name?: string;
+    description?: string;
+    location?: string;
+    startDate?: string;
+    endDate?: string;
+    budget?: number;
+    status?: string;
+  },
+) {
+  const response = await apiClient.patch<{ data: ProjectResponse }>(
+    `/projects/${id}`,
+    data,
+  );
+  return response.data.data;
+}
+
+/**
+ * Deletes a project.
+ * @param id - Project ID
+ * @returns void
+ */
+export async function deleteProject(id: string) {
+  await apiClient.delete(`/projects/${id}`);
+}
+
+/**
+ * Fetches assignments for a project.
+ * @param projectId - Project ID
+ * @returns Array of assigned users
+ */
+export async function getProjectAssignments(projectId: string) {
+  const response = await apiClient.get<{ data: UserAssignmentResponse[] }>(
+    `/projects/${projectId}/assignments`,
+  );
+  return response.data.data;
+}
+
+/**
+ * Assigns employees to a project.
+ * @param projectId - Project ID
+ * @param employeeIds - Array of employee IDs to assign
+ * @returns Updated assignments
+ */
+export async function assignEmployees(
+  projectId: string,
+  employeeIds: string[],
+) {
+  const response = await apiClient.post<{ data: UserAssignmentResponse[] }>(
+    `/projects/${projectId}/assignments`,
+    { employeeIds },
+  );
+  return response.data.data;
+}
+
+/**
+ * Unassigns an employee from a project.
+ * @param projectId - Project ID
+ * @param employeeId - Employee ID to unassign
+ * @returns void
+ */
+export async function unassignEmployee(projectId: string, employeeId: string) {
+  await apiClient.delete(`/projects/${projectId}/assignments/${employeeId}`);
+}
+
+// ─── User Assignment Response Type ────────────────────────────────────────────
+
+interface UserAssignmentResponse {
+  id: string;
+  email: string;
+  role: 'ADMIN' | 'EMPLOYEE';
+  status: 'PENDING' | 'ACTIVE' | 'DEACTIVATED';
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  employeeCode?: string;
+  designation?: string;
+  department?: string;
 }

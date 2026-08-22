@@ -78,3 +78,40 @@ export async function getMyAttendanceCalendar(
   );
   return response.data;
 }
+
+/**
+ * Admin endpoint: Fetches attendance records for all employees.
+ * @param params - Optional filters (userId, date)
+ * @returns Array of attendance records with user info
+ */
+export async function getAdminAttendance(params?: {
+  userId?: string;
+  date?: string;
+}) {
+  const queryParams: Record<string, string> = {};
+  if (params?.userId) queryParams.userId = params.userId;
+  if (params?.date) queryParams.date = params.date;
+
+  const response = await apiClient.get<{ data: AdminAttendanceRecord[] }>(
+    '/attendance/admin',
+    { params: queryParams },
+  );
+  return response.data.data;
+}
+
+// ─── Admin Response Types ─────────────────────────────────────────────────────
+
+export interface AdminAttendanceRecord {
+  id: string;
+  userId: string;
+  date: string;
+  status: 'PRESENT' | 'ABSENT' | 'LATE' | 'HALF_DAY' | 'LEAVE';
+  checkInTime?: string;
+  checkOutTime?: string;
+  user?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    employeeCode?: string;
+  };
+}

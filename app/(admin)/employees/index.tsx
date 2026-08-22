@@ -1,5 +1,14 @@
 import React, { useState } from 'react';
-import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import {
+  FlatList,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  ActivityIndicator,
+  RefreshControl,
+} from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar } from '../../../src/components/ui/Avatar';
@@ -14,27 +23,9 @@ import {
   Spacing,
 } from '../../../src/constants/tokens';
 import type { BadgeVariant } from '../../../src/types';
+import { useEmployees } from '../../../src/hooks/useEmployees';
 
 // ─── Types & mock data ────────────────────────────────────────────────────────
-
-interface Employee {
-  id: string;
-  name: string;
-  initials: string;
-  empId: string;
-  designation: string;
-  active: boolean;
-  projects: number;
-  attendance: string;
-}
-
-const EMPLOYEES: Employee[] = [
-  { id: '1', name: 'Rahul Kumar',   initials: 'RK', empId: 'ASA-2024-047', designation: 'Site Engineer',         active: true,  projects: 4, attendance: '87%' },
-  { id: '2', name: 'Anita Sharma',  initials: 'AS', empId: 'ASA-2024-051', designation: 'Civil Engineer',         active: true,  projects: 3, attendance: '92%' },
-  { id: '3', name: 'Vikram Patel',  initials: 'VP', empId: 'ASA-2023-018', designation: 'Electrical Engineer',    active: true,  projects: 5, attendance: '78%' },
-  { id: '4', name: 'Priya Joshi',   initials: 'PJ', empId: 'ASA-2022-009', designation: 'Project Lead',           active: true,  projects: 2, attendance: '95%' },
-  { id: '5', name: 'Manish Rao',    initials: 'MR', empId: 'ASA-2024-063', designation: 'Junior Engineer',        active: false, projects: 1, attendance: '64%' },
-];
 
 type Filter = 'All' | 'Active' | 'Inactive';
 const FILTERS: Filter[] = ['All', 'Active', 'Inactive'];
@@ -44,14 +35,43 @@ const STATUS_BADGE: Record<'active' | 'inactive', { variant: BadgeVariant; label
   inactive: { variant: 'rejected', label: 'Inactive' },
 };
 
+// Helper to get initials from name
+function getInitials(firstName: string, lastName: string): string {
+  return `${firstName[0] ?? ''}${lastName[0] ?? ''}`.toUpperCase();
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function EmployeesScreen(): React.ReactElement {
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>('All');
   const [search, setSearch] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const filtered = EMPLOYEES.filter((e) => {
+  // Fetch employees from API
+  const { data: employeeData, isLoading, refetch } = useEmployees(1);
+
+  // Handle pull-to-refresh
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await refetch();
+    setIsRefreshing(false);
+  };
+
+  // Map API data to component format
+  const employees = employeeData?.data.map((user) => ({
+    id: user.id,
+    name: `${user.firstName} ${user.lastName}`,
+    initials: getInitials(user.firstName, user.lastName),
+    empId: user.employeeCode ?? 'N/A',
+    designation: user.designation ?? 'No designation',
+    active: user.status === 'ACTIVE',
+    projects: 0, // TODO: Will be populated when we have project assignments
+    attendance: 'N/A', // TODO: Will be populated when we have attendance data
+  })) ?? [];
+
+  // Client-side filtering
+  const filtered = employees.filter((e) => {
     const matchFilter =
       filter === 'All' || (filter === 'Active' ? e.active : !e.active);
     const matchSearch = e.name.toLowerCase().includes(search.trim().toLowerCase());
@@ -102,6 +122,20 @@ export default function EmployeesScreen(): React.ReactElement {
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           ItemSeparatorComponent={() => <View style={styles.sep} />}
+          refreshControl={
+            <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
+          }
+          ListEmptyComponent={() =>
+            isLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={Colors.primary} />
+              </View>
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>No employees found.</Text>
+              </View>
+            )
+          }
           renderItem={({ item }) => (
             <TouchableOpacity activeOpacity={0.9} onPress={() => router.push(`/(admin)/employees/${item.id}` as never)}>
             <Card style={styles.empCard}>
@@ -269,5 +303,24 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.regular,
     fontSize: FontSize.sm,
     color: Colors.textSecondary,
+  },
+
+  // Loading and empty states
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing[8],
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing[8],
+  },
+  emptyText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.base,
+    color: Colors.textMuted,
   },
 });

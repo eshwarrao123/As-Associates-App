@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../../src/components/ui/Button';
@@ -7,6 +7,7 @@ import { Card } from '../../src/components/ui/Card';
 import { Dropdown } from '../../src/components/ui/Dropdown';
 import { AdminBottomNav } from '../../src/components/ui/AdminBottomNav';
 import { Icon } from '../../src/components/ui/Icon';
+import { useAdminAttendance } from '../../src/hooks/useAdminReports';
 import {
   BorderRadius,
   Colors,
@@ -17,7 +18,7 @@ import {
   withAlpha,
 } from '../../src/constants/tokens';
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
+// ─── Helpers & Types ──────────────────────────────────────────────────────────
 
 const REPORT_TYPES = ['Attendance', 'Projects', 'Requests', 'Financial'] as const;
 type ReportType = (typeof REPORT_TYPES)[number];
@@ -32,15 +33,46 @@ interface AttendanceRow {
   pct: string;
 }
 
-const ATTENDANCE_ROWS: AttendanceRow[] = [
-  { name: 'Rahul Kumar',  present: 21, absent: 3, pct: '87%'  },
-  { name: 'Anita Sharma', present: 23, absent: 1, pct: '96%'  },
-  { name: 'Vikram Patel', present: 19, absent: 5, pct: '79%'  },
-  { name: 'Priya Joshi',  present: 24, absent: 0, pct: '100%' },
-];
+function calculateAttendanceRows(
+  attendanceRecords: Array<{
+    userId: string;
+    status: string;
+    user?: { firstName: string; lastName: string };
+  }>,
+): AttendanceRow[] {
+  const userMap = new Map<
+    string,
+    { name: string; present: number; absent: number; total: number }
+  >();
 
-const TOTAL_PRESENT = ATTENDANCE_ROWS.reduce((s, r) => s + r.present, 0);
-const TOTAL_ABSENT  = ATTENDANCE_ROWS.reduce((s, r) => s + r.absent,  0);
+  attendanceRecords.forEach((record) => {
+    if (!record.user) return;
+
+    const userName = `${record.user.firstName} ${record.user.lastName}`;
+    const existing = userMap.get(record.userId) || {
+      name: userName,
+      present: 0,
+      absent: 0,
+      total: 0,
+    };
+
+    if (record.status === 'PRESENT' || record.status === 'LATE') {
+      existing.present += 1;
+    } else if (record.status === 'ABSENT') {
+      existing.absent += 1;
+    }
+    existing.total += 1;
+
+    userMap.set(record.userId, existing);
+  });
+
+  return Array.from(userMap.values()).map((user) => ({
+    name: user.name,
+    present: user.present,
+    absent: user.absent,
+    pct: user.total > 0 ? `${Math.round((user.present / user.total) * 100)}%` : '0%',
+  }));
+}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -48,7 +80,27 @@ export default function ReportsScreen(): React.ReactElement {
   const router = useRouter();
   const [reportType, setReportType] = useState<ReportType>('Attendance');
   const [project, setProject] = useState<string | null>('All Projects');
-  const [range, setRange]     = useState<string | null>('This Month');
+  const [range, setRange] = useState<string | null>('This Month');
+
+  // Fetch attendance data (only when reportType is 'Attendance')
+  const {
+    data: attendanceData,
+    isLoading: attendanceLoading,
+    refetch: refetchAttendance,
+  } = useAdminAttendance();
+
+  const attendanceRows =
+    reportType === 'Attendance' && attendanceData
+      ? calculateAttendanceRows(attendanceData)
+      : [];
+
+  const totalPresent = attendanceRows.reduce((s, r) => s + r.present, 0);
+  const totalAbsent = attendanceRows.reduce((s, r) => s + r.absent, 0);
+
+  const isLoading = reportType === 'Attendance' && attendanceLoading;
+
+  // TODO: connect when endpoint available
+  // For 'Projects', 'Requests', 'Financial' report types, use mock data or wait for endpoints
 
   return (
     <>
@@ -85,7 +137,19 @@ export default function ReportsScreen(): React.ReactElement {
           </ScrollView>
         </View>
 
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            reportType === 'Attendance' ? (
+              <RefreshControl
+                refreshing={isLoading}
+                onRefresh={refetchAttendance}
+                colors={[Colors.primary]}
+              />
+            ) : undefined
+          }
+        >
           {/* Filters */}
           <Card style={styles.section}>
             <Text style={styles.sectionLabel}>FILTERS</Text>
@@ -99,28 +163,50 @@ export default function ReportsScreen(): React.ReactElement {
             {/* Card section heading — body-lg: 16px / bold */}
             <Text style={styles.previewTitle}>{reportType} Report Preview</Text>
 
-            <View style={[styles.tableRow, styles.tableHead]}>
-              <Text style={[styles.th, styles.colName]}>Employee</Text>
-              <Text style={[styles.th, styles.colNum]}>P</Text>
-              <Text style={[styles.th, styles.colNum]}>A</Text>
-              <Text style={[styles.th, styles.colPct]}>%</Text>
-            </View>
-
-            {ATTENDANCE_ROWS.map((r, i) => (
-              <View key={r.name} style={[styles.tableRow, i % 2 === 1 && styles.tableRowAlt]}>
-                <Text style={[styles.td,     styles.colName]} numberOfLines={1}>{r.name}</Text>
-                <Text style={[styles.td,     styles.colNum, { color: Colors.success }]}>{r.present}</Text>
-                <Text style={[styles.td,     styles.colNum, { color: Colors.danger  }]}>{r.absent}</Text>
-                <Text style={[styles.tdBold, styles.colPct]}>{r.pct}</Text>
+            {isLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={Colors.primary} />
               </View>
-            ))}
+            ) : reportType === 'Attendance' && attendanceRows.length > 0 ? (
+              <>
+                <View style={[styles.tableRow, styles.tableHead]}>
+                  <Text style={[styles.th, styles.colName]}>Employee</Text>
+                  <Text style={[styles.th, styles.colNum]}>P</Text>
+                  <Text style={[styles.th, styles.colNum]}>A</Text>
+                  <Text style={[styles.th, styles.colPct]}>%</Text>
+                </View>
 
-            <View style={[styles.tableRow, styles.tableFooter]}>
-              <Text style={[styles.tdBold, styles.colName]}>Total</Text>
-              <Text style={[styles.tdBold, styles.colNum]}>{TOTAL_PRESENT}</Text>
-              <Text style={[styles.tdBold, styles.colNum]}>{TOTAL_ABSENT}</Text>
-              <Text style={[styles.tdBold, styles.colPct]}>—</Text>
-            </View>
+                {attendanceRows.map((r, i) => (
+                  <View key={r.name} style={[styles.tableRow, i % 2 === 1 && styles.tableRowAlt]}>
+                    <Text style={[styles.td, styles.colName]} numberOfLines={1}>
+                      {r.name}
+                    </Text>
+                    <Text style={[styles.td, styles.colNum, { color: Colors.success }]}>
+                      {r.present}
+                    </Text>
+                    <Text style={[styles.td, styles.colNum, { color: Colors.danger }]}>
+                      {r.absent}
+                    </Text>
+                    <Text style={[styles.tdBold, styles.colPct]}>{r.pct}</Text>
+                  </View>
+                ))}
+
+                <View style={[styles.tableRow, styles.tableFooter]}>
+                  <Text style={[styles.tdBold, styles.colName]}>Total</Text>
+                  <Text style={[styles.tdBold, styles.colNum]}>{totalPresent}</Text>
+                  <Text style={[styles.tdBold, styles.colNum]}>{totalAbsent}</Text>
+                  <Text style={[styles.tdBold, styles.colPct]}>—</Text>
+                </View>
+              </>
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>
+                  {reportType === 'Attendance'
+                    ? 'No attendance data available.'
+                    : 'Report preview not yet available.'}
+                </Text>
+              </View>
+            )}
           </Card>
 
           {/* Export buttons — outline variants, label-md */}
@@ -144,6 +230,22 @@ export default function ReportsScreen(): React.ReactElement {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
+  loadingContainer: {
+    paddingVertical: Spacing[8],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyContainer: {
+    paddingVertical: Spacing[6],
+    paddingHorizontal: Spacing[4],
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.md,
+    color: Colors.textMuted,
+    textAlign: 'center',
+  },
 
   // Top app bar — 56px, navy, flat (no shadow per DESIGN.md §11)
   header: {

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../../../src/components/ui/Button';
@@ -14,21 +14,61 @@ import {
   LetterSpacing,
   Spacing,
 } from '../../../src/constants/tokens';
+import { useCreateEmployee } from '../../../src/hooks/useEmployees';
+import { getErrorMessage } from '../../../src/services/api/errorHandler';
 
 const DEPARTMENTS = ['Civil', 'Electrical', 'Plumbing', 'HVAC', 'General'];
-const STATUSES    = ['Active', 'Inactive'];
 
 export default function AddEmployeeScreen(): React.ReactElement {
   const router = useRouter();
+  const createEmployee = useCreateEmployee();
 
   const [fullName,    setFullName]    = useState('');
-  const [empId,       setEmpId]       = useState('');
-  const [role,        setRole]        = useState('');
+  const [designation, setDesignation] = useState('');
   const [phone,       setPhone]       = useState('');
   const [email,       setEmail]       = useState('');
   const [department,  setDepartment]  = useState<string | null>(null);
-  const [status,      setStatus]      = useState<string | null>('Active');
-  const [joinDate,    setJoinDate]    = useState('');
+
+  const handleSubmit = () => {
+    // Validation
+    if (!fullName.trim()) {
+      Alert.alert('Error', 'Please enter full name');
+      return;
+    }
+
+    if (!phone.trim()) {
+      Alert.alert('Error', 'Please enter phone number');
+      return;
+    }
+
+    // Submit to API
+    createEmployee.mutate(
+      {
+        name: fullName.trim(),
+        phone: phone.trim(),
+        email: email.trim() || undefined,
+        role: 'EMPLOYEE',
+        designation: designation.trim() || undefined,
+      },
+      {
+        onSuccess: (result) => {
+          Alert.alert(
+            'Employee Created',
+            `Employee Code: ${result.tempCredential}\n\nShare this with the employee so they can log in.`,
+            [
+              {
+                text: 'OK',
+                onPress: () => router.back(),
+              },
+            ],
+          );
+        },
+        onError: (error) => {
+          Alert.alert('Error', getErrorMessage(error));
+        },
+      },
+    );
+  };
 
   return (
     <>
@@ -47,39 +87,36 @@ export default function AddEmployeeScreen(): React.ReactElement {
           <Card style={styles.section}>
             <Text style={styles.sectionLabel}>PERSONAL INFO</Text>
             <Input
-              label="Full Name"
+              label="Full Name *"
               value={fullName}
               onChangeText={setFullName}
               placeholder="Enter full name"
               autoCapitalize="words"
-            />
-            <Input
-              label="Employee ID"
-              value={empId}
-              onChangeText={setEmpId}
-              placeholder="e.g. ASA-2024-001"
-              autoCapitalize="characters"
+              editable={!createEmployee.isPending}
             />
             <Input
               label="Role / Designation"
-              value={role}
-              onChangeText={setRole}
+              value={designation}
+              onChangeText={setDesignation}
               placeholder="e.g. Site Engineer"
               autoCapitalize="words"
+              editable={!createEmployee.isPending}
             />
             <Input
-              label="Phone Number"
+              label="Phone Number *"
               value={phone}
               onChangeText={setPhone}
               placeholder="Enter phone number"
               keyboardType="phone-pad"
+              editable={!createEmployee.isPending}
             />
             <Input
-              label="Email"
+              label="Email (Optional)"
               value={email}
               onChangeText={setEmail}
               placeholder="Enter email address"
               keyboardType="email-address"
+              editable={!createEmployee.isPending}
             />
           </Card>
 
@@ -87,39 +124,30 @@ export default function AddEmployeeScreen(): React.ReactElement {
           <Card style={styles.section}>
             <Text style={styles.sectionLabel}>EMPLOYMENT</Text>
             <Dropdown
-              label="Department"
+              label="Department (Optional)"
               value={department}
               options={DEPARTMENTS}
               onSelect={setDepartment}
               placeholder="Select department"
             />
-            <Dropdown
-              label="Status"
-              value={status}
-              options={STATUSES}
-              onSelect={setStatus}
-            />
-            <Input
-              label="Join Date"
-              value={joinDate}
-              onChangeText={setJoinDate}
-              placeholder="DD-MM-YYYY"
-              keyboardType="numeric"
-            />
+            <Text style={styles.note}>
+              Employee will be created with ACTIVE status by default.
+            </Text>
           </Card>
 
           {/* ── Section 3: Assign Projects ────────────────────────────── */}
           <Card style={styles.section}>
             <Text style={styles.sectionLabel}>ASSIGN PROJECTS</Text>
             <Text style={styles.note}>
-              Projects can be assigned from the Projects screen.
+              Projects can be assigned from the Projects screen after creating the employee.
             </Text>
           </Card>
 
           {/* ── Footer ────────────────────────────────────────────────── */}
           <Button
-            label="Add Employee"
-            onPress={() => console.log('Add employee pressed', { fullName, empId, role, phone, email, department, status, joinDate })}
+            label={createEmployee.isPending ? 'Creating...' : 'Add Employee'}
+            onPress={handleSubmit}
+            disabled={createEmployee.isPending}
           />
           <TouchableOpacity activeOpacity={0.7} onPress={() => router.back()} style={styles.cancelWrap}>
             <Text style={styles.cancelText}>Cancel</Text>
