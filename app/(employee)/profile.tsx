@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Stack } from 'expo-router';
+import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { Avatar } from '../../src/components/ui/Avatar';
@@ -9,6 +9,7 @@ import { Button } from '../../src/components/ui/Button';
 import { Icon, type IconName } from '../../src/components/ui/Icon';
 import { BottomNav } from '../../src/components/ui/BottomNav';
 import { useAuthStore } from '../../src/store/auth.store';
+import { useMe } from '../../src/hooks/useMe';
 import { Colors, FontFamily, FontSize, Spacing, BorderRadius, withAlpha } from '../../src/constants/tokens';
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
@@ -25,30 +26,66 @@ interface Row {
 }
 
 const CONTACT_ROWS: Row[] = [
-  { icon: 'phone', label: '+91 98765 43210' },
-  { icon: 'email', label: 'rahul@asassociates.com' },
+  { icon: 'phone', label: 'Phone' },
+  { icon: 'email', label: 'Email' },
 ];
 
 const ACCOUNT_ROWS: Row[] = [
   { icon: 'lock', label: 'Change Password' },
-  { icon: 'info', label: 'Personal Information' },
+  { icon: 'info', label: 'Status' },
 ];
 
 // ─── Row component ────────────────────────────────────────────────────────────
 
-const LinkRow: React.FC<Row> = ({ icon, label }) => (
-  <TouchableOpacity activeOpacity={0.7} style={styles.linkRow}>
+const LinkRow: React.FC<Row & { value?: string; onPress?: () => void }> = ({
+  icon,
+  label,
+  value,
+  onPress,
+}) => (
+  <TouchableOpacity activeOpacity={0.7} style={styles.linkRow} onPress={onPress} disabled={!onPress}>
     <Icon name={icon} size="md" color={Colors.textSecondary} style={styles.linkIcon} />
-    <Text style={styles.linkLabel}>{label}</Text>
-    <Icon name="chevronRight" size="md" color={Colors.textSecondary} />
+    <View style={styles.linkContent}>
+      <Text style={styles.linkLabel}>{label}</Text>
+      {value && <Text style={styles.linkValue}>{value}</Text>}
+    </View>
+    {onPress && <Icon name="chevronRight" size="md" color={Colors.textSecondary} />}
   </TouchableOpacity>
 );
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ProfileScreen(): React.ReactElement {
-  const { logout } = useAuthStore();
+  const router = useRouter();
   const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const { data: meData, isLoading: meLoading } = useMe();
+  const storeUser = useAuthStore((state) => state.user);
+
+  // Use API data if available, fallback to store user
+  const apiUser = meData;
+  const displayFirstName = apiUser?.firstName ?? '';
+  const displayLastName = apiUser?.lastName ?? '';
+  const displayName = apiUser
+    ? `${apiUser.firstName} ${apiUser.lastName}`
+    : storeUser?.name ?? 'User';
+  const displayEmployeeCode = apiUser?.employeeCode ?? 'N/A';
+  const displayRole = apiUser?.role === 'ADMIN' ? 'Admin' : 'Employee';
+  const displayDesignation = apiUser?.designation ?? 'N/A';
+  const displayPhone = apiUser?.phone ?? 'Not provided';
+  const displayEmail = apiUser?.email ?? 'Not provided';
+  const displayStatus = apiUser?.status === 'ACTIVE' ? 'Active' : 'Deactivated';
+
+  // Generate initials
+  const initials = displayFirstName && displayLastName
+    ? `${displayFirstName[0]}${displayLastName[0]}`.toUpperCase()
+    : displayName
+        .split(' ')
+        .slice(0, 2)
+        .map((n) => n[0])
+        .join('')
+        .toUpperCase();
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -64,6 +101,32 @@ export default function ProfileScreen(): React.ReactElement {
     }
   };
 
+  const handleLogout = () => {
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: async () => {
+          setIsLoggingOut(true);
+          try {
+            await useAuthStore.getState().logoutAction();
+            router.replace('/(auth)/login');
+          } catch {
+            setIsLoggingOut(false);
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleChangePassword = () => {
+    router.push('/(auth)/change-password');
+  };
+
+  // Show loading indicator only when both meLoading and no storeUser (rare case)
+  const showLoadingIndicator = meLoading && !storeUser;
+
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
@@ -76,16 +139,26 @@ export default function ProfileScreen(): React.ReactElement {
               {photoUri ? (
                 <Image source={{ uri: photoUri }} style={styles.avatarImage} />
               ) : (
-                <Avatar initials="RK" size="lg" bgColor={withAlpha(Colors.surface, 0.20)} style={styles.headerAvatar} />
+                <Avatar
+                  initials={initials}
+                  size="lg"
+                  bgColor={withAlpha(Colors.surface, 0.2)}
+                  style={styles.headerAvatar}
+                />
               )}
               {/* Camera badge */}
               <View style={styles.cameraBadge}>
                 <Icon name="camera" size={12} color={Colors.textOnPrimary} />
               </View>
             </TouchableOpacity>
-            <Text style={styles.headerName}>Rahul Kumar</Text>
-            <Text style={styles.headerId}>ASA-2024-047</Text>
-            <Text style={styles.headerRole}>Site Engineer</Text>
+            <View style={styles.headerNameRow}>
+              <Text style={styles.headerName}>{displayName}</Text>
+              {showLoadingIndicator && (
+                <ActivityIndicator size="small" color={Colors.surface} style={styles.nameLoader} />
+              )}
+            </View>
+            <Text style={styles.headerId}>{displayEmployeeCode}</Text>
+            <Text style={styles.headerRole}>{displayDesignation}</Text>
           </View>
 
           {/* Stats card overlapping header */}
@@ -105,29 +178,24 @@ export default function ProfileScreen(): React.ReactElement {
           <View style={styles.body}>
             <Card noPadding style={styles.linkCard}>
               <Text style={styles.sectionLabel}>CONTACT INFO</Text>
-              {CONTACT_ROWS.map((r, i) => (
-                <React.Fragment key={r.label}>
-                  <LinkRow {...r} />
-                  {i < CONTACT_ROWS.length - 1 && <View style={styles.divider} />}
-                </React.Fragment>
-              ))}
+              <LinkRow icon="phone" label="Phone" value={displayPhone} />
+              <View style={styles.divider} />
+              <LinkRow icon="email" label="Email" value={displayEmail} />
             </Card>
 
             {/* Account */}
             <Card noPadding style={styles.linkCard}>
               <Text style={styles.sectionLabel}>ACCOUNT</Text>
-              {ACCOUNT_ROWS.map((r, i) => (
-                <React.Fragment key={r.label}>
-                  <LinkRow {...r} />
-                  {i < ACCOUNT_ROWS.length - 1 && <View style={styles.divider} />}
-                </React.Fragment>
-              ))}
+              <LinkRow icon="lock" label="Change Password" onPress={handleChangePassword} />
+              <View style={styles.divider} />
+              <LinkRow icon="info" label="Status" value={displayStatus} />
             </Card>
 
             <Button
-              label="Logout"
+              label={isLoggingOut ? 'Logging out...' : 'Logout'}
               variant="outline"
-              onPress={() => void logout()}
+              onPress={handleLogout}
+              disabled={isLoggingOut}
               style={styles.logoutBtn}
             />
           </View>
@@ -184,9 +252,28 @@ const styles = StyleSheet.create({
     borderColor: Colors.primary,
   },
 
-  headerName: { fontFamily: FontFamily.bold, fontSize: FontSize.xl, color: Colors.surface, marginTop: Spacing[3] },
+  headerName: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.xl,
+    color: Colors.surface,
+    marginTop: Spacing[3],
+  },
+  headerNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing[2],
+    marginTop: Spacing[3],
+  },
+  nameLoader: {
+    marginLeft: Spacing[1],
+  },
   headerId: { fontFamily: FontFamily.medium, fontSize: 13, color: Colors.accent, marginTop: 2 },
-  headerRole: { fontFamily: FontFamily.regular, fontSize: 13, color: 'rgba(255,255,255,0.80)', marginTop: 2 },
+  headerRole: {
+    fontFamily: FontFamily.regular,
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.80)',
+    marginTop: 2,
+  },
 
   statsCard: {
     flexDirection: 'row',
@@ -216,9 +303,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing[4],
     paddingBottom: Spacing[2],
   },
-  linkRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing[4], paddingVertical: 14, gap: Spacing[3] },
+  linkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing[4],
+    paddingVertical: 14,
+    gap: Spacing[3],
+  },
   linkIcon: { width: 24, textAlign: 'center' },
-  linkLabel: { flex: 1, fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.textPrimary },
+  linkContent: { flex: 1 },
+  linkLabel: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+    marginBottom: 2,
+  },
+  linkValue: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.base,
+    color: Colors.textPrimary,
+  },
   divider: { height: 1, backgroundColor: Colors.border, marginHorizontal: Spacing[4] },
 
   logoutBtn: {

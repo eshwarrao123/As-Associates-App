@@ -1,5 +1,8 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
+  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -9,11 +12,14 @@ import {
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
 import { Button } from '../../src/components/ui/Button';
 import { Card } from '../../src/components/ui/Card';
 import { Dropdown } from '../../src/components/ui/Dropdown';
 import { Icon } from '../../src/components/ui/Icon';
 import { BottomNav } from '../../src/components/ui/BottomNav';
+import { useUploadFile } from '../../src/hooks/useUploads';
+import { getErrorMessage } from '../../src/services/api/errorHandler';
 import { Colors, FontFamily, FontSize, Spacing, BorderRadius } from '../../src/constants/tokens';
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
@@ -48,9 +54,68 @@ export default function UploadScreen(): React.ReactElement {
   const scrollRef = useRef<ScrollView>(null);
   const formOffsetY = useRef(0);
 
-  const [project, setProject] = React.useState<string | null>(PROJECT_OPTIONS[0]);
-  const [category, setCategory] = React.useState<string | null>(null);
-  const [notes, setNotes] = React.useState('');
+  const [project, setProject] = useState<string | null>(PROJECT_OPTIONS[0]);
+  const [category, setCategory] = useState<string | null>(null);
+  const [notes, setNotes] = useState('');
+  const [selectedImages, setSelectedImages] = useState<
+    Array<{ uri: string; name: string; type: string }>
+  >([]);
+
+  const uploadFile = useUploadFile();
+
+  const handlePickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'Please grant photo library access to upload images.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      allowsMultipleSelection: true,
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets.length > 0) {
+      const newImages = result.assets.map((asset) => ({
+        uri: asset.uri,
+        name: asset.fileName ?? `upload_${Date.now()}.jpg`,
+        type: asset.mimeType ?? 'image/jpeg',
+      }));
+      setSelectedImages((prev) => [...prev, ...newImages]);
+    }
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setSelectedImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSubmit = async () => {
+    if (selectedImages.length === 0) {
+      Alert.alert('No Images', 'Please select at least one image to upload.');
+      return;
+    }
+
+    // Upload all selected images sequentially
+    for (const image of selectedImages) {
+      uploadFile.mutate(image, {
+        onError: (err) => {
+          Alert.alert('Upload Error', getErrorMessage(err));
+        },
+      });
+    }
+
+    // After all uploads initiated, show success
+    Alert.alert('Success', 'Files uploaded successfully!', [
+      {
+        text: 'OK',
+        onPress: () => {
+          setSelectedImages([]);
+          setNotes('');
+        },
+      },
+    ]);
+  };
 
   return (
     <>
@@ -133,19 +198,39 @@ export default function UploadScreen(): React.ReactElement {
             {/* Card 2 — Photos */}
             <Card style={styles.sectionWithGap}>
               <Text style={styles.sectionLabel}>PHOTOS</Text>
-              <TouchableOpacity activeOpacity={0.7} style={styles.dropzone}>
-                <Text style={styles.dropzoneIcon}>📷</Text>
-                <Text style={styles.dropzoneText}>
-                  Tap to take photo or upload from gallery
-                </Text>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                style={styles.dropzone}
+                onPress={handlePickImage}
+                disabled={uploadFile.isPending}
+              >
+                {uploadFile.isPending ? (
+                  <ActivityIndicator size="large" color={Colors.primary} />
+                ) : (
+                  <>
+                    <Text style={styles.dropzoneIcon}>📷</Text>
+                    <Text style={styles.dropzoneText}>
+                      Tap to take photo or upload from gallery
+                    </Text>
+                  </>
+                )}
               </TouchableOpacity>
-              <View style={styles.thumbRow}>
-                {[0, 1].map((i) => (
-                  <View key={i} style={styles.thumb}>
-                    <Text style={styles.thumbIcon}>📷</Text>
-                  </View>
-                ))}
-              </View>
+              {selectedImages.length > 0 && (
+                <View style={styles.thumbRow}>
+                  {selectedImages.map((img, i) => (
+                    <View key={i} style={styles.thumbContainer}>
+                      <Image source={{ uri: img.uri }} style={styles.thumbImage} />
+                      <TouchableOpacity
+                        style={styles.removeBtn}
+                        onPress={() => handleRemoveImage(i)}
+                        disabled={uploadFile.isPending}
+                      >
+                        <Text style={styles.removeBtnText}>✕</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              )}
             </Card>
 
             {/* Card 3 — Work Notes */}
@@ -163,7 +248,11 @@ export default function UploadScreen(): React.ReactElement {
             </Card>
 
             <View style={styles.sectionWithGap}>
-              <Button label="Submit Upload" onPress={() => {}} />
+              <Button
+                label={uploadFile.isPending ? 'Uploading...' : 'Submit Upload'}
+                onPress={handleSubmit}
+                disabled={uploadFile.isPending || selectedImages.length === 0}
+              />
             </View>
           </View>
         </ScrollView>
@@ -291,7 +380,34 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     textAlign: 'center',
   },
-  thumbRow: { flexDirection: 'row', gap: Spacing[2] },
+  thumbRow: { flexDirection: 'row', gap: Spacing[2], flexWrap: 'wrap' },
+  thumbContainer: {
+    position: 'relative',
+    width: 80,
+    height: 80,
+  },
+  thumbImage: {
+    width: 80,
+    height: 80,
+    borderRadius: BorderRadius.btn,
+    backgroundColor: Colors.surface,
+  },
+  removeBtn: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: Colors.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  removeBtnText: {
+    color: Colors.textOnPrimary,
+    fontSize: 14,
+    fontFamily: FontFamily.bold,
+  },
   thumb: {
     width: 60,
     height: 60,

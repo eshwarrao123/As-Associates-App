@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar } from '../../src/components/ui/Avatar';
@@ -9,6 +9,7 @@ import { Input } from '../../src/components/ui/Input';
 import { AdminBottomNav } from '../../src/components/ui/AdminBottomNav';
 import { Icon, type IconName } from '../../src/components/ui/Icon';
 import { useAuthStore } from '../../src/store/auth.store';
+import { useMe } from '../../src/hooks/useMe';
 import {
   Colors,
   FontFamily,
@@ -63,13 +64,63 @@ const ToggleRow: React.FC<{
 
 export default function SettingsScreen(): React.ReactElement {
   const router = useRouter();
-  const { logout } = useAuthStore();
-  const [pushEnabled,      setPushEnabled]      = useState(true);
-  const [emailEnabled,     setEmailEnabled]      = useState(false);
-  const [showCompanyEdit,  setShowCompanyEdit]   = useState(false);
-  const [companyName,      setCompanyName]       = useState('AS Associates');
-  const [regNumber,        setRegNumber]         = useState('CRN-2023-98471');
-  const [address,          setAddress]           = useState('Unit 4, Andheri Industrial Estate, Mumbai 400053');
+  const [pushEnabled, setPushEnabled] = useState(true);
+  const [emailEnabled, setEmailEnabled] = useState(false);
+  const [showCompanyEdit, setShowCompanyEdit] = useState(false);
+  const [companyName, setCompanyName] = useState('AS Associates');
+  const [regNumber, setRegNumber] = useState('CRN-2023-98471');
+  const [address, setAddress] = useState('Unit 4, Andheri Industrial Estate, Mumbai 400053');
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const { data: meData, isLoading: meLoading } = useMe();
+  const storeUser = useAuthStore((state) => state.user);
+
+  // Use API data if available, fallback to store user
+  const apiUser = meData;
+  const displayFirstName = apiUser?.firstName ?? '';
+  const displayLastName = apiUser?.lastName ?? '';
+  const displayName = apiUser
+    ? `${apiUser.firstName} ${apiUser.lastName}`
+    : storeUser?.name ?? 'Admin';
+  const displayEmployeeCode = apiUser?.employeeCode ?? 'N/A';
+  const displayDesignation = apiUser?.designation ?? 'Administrator';
+  const displayEmail = apiUser?.email ?? 'admin@asassociates.com';
+
+  // Generate initials
+  const initials = displayFirstName && displayLastName
+    ? `${displayFirstName[0]}${displayLastName[0]}`.toUpperCase()
+    : displayName
+        .split(' ')
+        .slice(0, 2)
+        .map((n) => n[0])
+        .join('')
+        .toUpperCase();
+
+  // Show loading indicator only when both meLoading and no storeUser (rare case)
+  const showLoadingIndicator = meLoading && !storeUser;
+
+  const handleLogout = () => {
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: async () => {
+          setIsLoggingOut(true);
+          try {
+            await useAuthStore.getState().logoutAction();
+            router.replace('/(auth)/login');
+          } catch {
+            setIsLoggingOut(false);
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleChangePassword = () => {
+    router.push('/(auth)/change-password');
+  };
 
   return (
     <>
@@ -83,12 +134,20 @@ export default function SettingsScreen(): React.ReactElement {
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           {/* Admin profile card */}
           <Card style={styles.profileCard}>
-            <Avatar initials="AS" size="lg" bgColor={Colors.primary} />
+            <Avatar initials={initials} size="lg" bgColor={Colors.primary} />
             <View style={styles.flex1}>
-              <Text style={styles.companyName}>AS Associates</Text>
-              <Text style={styles.companySub}>Architectural & Interior Contractors</Text>
+              <View style={styles.nameRow}>
+                <Text style={styles.companyName}>{displayName}</Text>
+                {showLoadingIndicator && (
+                  <ActivityIndicator size="small" color={Colors.primary} style={styles.nameLoader} />
+                )}
+              </View>
+              <Text style={styles.companySub}>{displayDesignation}</Text>
               {/* Email is metadata — textMuted, not accent */}
-              <Text style={styles.companyMeta}>admin@asassociates.com</Text>
+              <Text style={styles.companyMeta}>{displayEmail}</Text>
+              {displayEmployeeCode !== 'N/A' && (
+                <Text style={styles.companyMeta}>ID: {displayEmployeeCode}</Text>
+              )}
             </View>
           </Card>
 
@@ -147,6 +206,8 @@ export default function SettingsScreen(): React.ReactElement {
             />
             <View style={styles.divider} />
             <NavRow icon="reports" label="Reports" onPress={() => router.push('/(admin)/reports' as never)} />
+            <View style={styles.divider} />
+            <NavRow icon="lock" label="Change Password" onPress={handleChangePassword} />
           </Card>
 
           {/* Notifications */}
@@ -170,9 +231,10 @@ export default function SettingsScreen(): React.ReactElement {
 
           {/* Logout — outline danger variant */}
           <Button
-            label="Logout"
+            label={isLoggingOut ? 'Logging out...' : 'Logout'}
             variant="outline"
-            onPress={() => void logout()}
+            onPress={handleLogout}
+            disabled={isLoggingOut}
             style={styles.logoutBtn}
           />
         </ScrollView>
@@ -207,6 +269,8 @@ const styles = StyleSheet.create({
 
   // Profile card — row layout with large avatar
   profileCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3] },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing[2] },
+  nameLoader: { marginLeft: Spacing[1] },
   // headline-sm: 18px / bold
   companyName: {
     fontFamily: FontFamily.bold,

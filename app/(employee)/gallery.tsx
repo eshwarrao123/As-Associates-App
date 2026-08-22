@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, Image, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon } from '../../src/components/ui/Icon';
+import { useMyUploads } from '../../src/hooks/useUploads';
 import {
   Colors,
   FontFamily,
@@ -12,39 +13,42 @@ import {
   withAlpha,
 } from '../../src/constants/tokens';
 
-// ─── Types & mock data ────────────────────────────────────────────────────────
-
-type UploadType = 'photo' | 'progress' | 'request';
+// ─── Helpers & Types ──────────────────────────────────────────────────────────
 
 interface GalleryItem {
   id: string;
-  type: UploadType;
-  date: string;           // display label
-  sortDate: number;       // for ordering
-  projectName: string;
+  url: string;
+  resourceType: string;
+  date: string;
+  sortDate: number;
 }
 
-const NOW = Date.now();
-const DAY = 86_400_000;
+function formatUploadDate(isoDate: string): string {
+  const date = new Date(isoDate);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-const MOCK_GALLERY: GalleryItem[] = [
-  { id: '1',  type: 'photo',    date: 'Today',       sortDate: NOW,             projectName: 'ICICI Bank HQ' },
-  { id: '2',  type: 'photo',    date: 'Today',       sortDate: NOW - 3600_000,  projectName: 'ICICI Bank HQ' },
-  { id: '3',  type: 'progress', date: 'Today',       sortDate: NOW - 7200_000,  projectName: 'Godrej One Retrofit' },
-  { id: '4',  type: 'photo',    date: 'Yesterday',   sortDate: NOW - DAY,       projectName: 'ICICI Bank HQ' },
-  { id: '5',  type: 'request',  date: 'Yesterday',   sortDate: NOW - DAY * 1.2, projectName: 'ICICI Bank HQ' },
-  { id: '6',  type: 'photo',    date: '10 Aug',      sortDate: NOW - DAY * 3,   projectName: 'Godrej One Retrofit' },
-  { id: '7',  type: 'progress', date: '09 Aug',      sortDate: NOW - DAY * 4,   projectName: 'ICICI Bank HQ' },
-  { id: '8',  type: 'photo',    date: '07 Aug',      sortDate: NOW - DAY * 6,   projectName: 'Godrej One Retrofit' },
-  { id: '9',  type: 'request',  date: '05 Aug',      sortDate: NOW - DAY * 8,   projectName: 'ICICI Bank HQ' },
-  { id: '10', type: 'photo',    date: '03 Aug',      sortDate: NOW - DAY * 10,  projectName: 'Godrej One Retrofit' },
-  { id: '11', type: 'progress', date: '01 Aug',      sortDate: NOW - DAY * 12,  projectName: 'ICICI Bank HQ' },
-  { id: '12', type: 'photo',    date: '30 Jul',      sortDate: NOW - DAY * 14,  projectName: 'Godrej One Retrofit' },
-];
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
+
+function mapUploadsToGalleryItems(
+  uploads: Array<{ id: string; url: string; resourceType: string; createdAt: string }>,
+): GalleryItem[] {
+  return uploads.map((upload) => ({
+    id: upload.id,
+    url: upload.url,
+    resourceType: upload.resourceType,
+    date: formatUploadDate(upload.createdAt),
+    sortDate: new Date(upload.createdAt).getTime(),
+  }));
+}
 
 // ─── Filter chips ─────────────────────────────────────────────────────────────
 
-type FilterKey = 'all' | UploadType;
+type FilterKey = 'all' | 'photo' | 'progress' | 'request';
 
 interface FilterChip {
   key: FilterKey;
@@ -52,29 +56,54 @@ interface FilterChip {
 }
 
 const FILTERS: FilterChip[] = [
-  { key: 'all',      label: 'All' },
-  { key: 'photo',    label: 'Photos' },
+  { key: 'all', label: 'All' },
+  { key: 'photo', label: 'Photos' },
   { key: 'progress', label: 'Progress' },
-  { key: 'request',  label: 'Requests' },
+  { key: 'request', label: 'Requests' },
 ];
 
 // ─── Grid tile ────────────────────────────────────────────────────────────────
 
-const GridTile: React.FC<{ item: GalleryItem }> = ({ item }) => (
-  <View style={styles.tile}>
-    <View style={styles.tilePlaceholder}>
-      <Icon name="photo" size="lg" color={Colors.textMuted} />
+const GridTile: React.FC<{ item: GalleryItem }> = ({ item }) => {
+  const isVideo = item.resourceType === 'video';
+
+  return (
+    <View style={styles.tile}>
+      {item.url ? (
+        <View style={styles.tilePlaceholder}>
+          <Image source={{ uri: item.url }} style={styles.tileImage} resizeMode="cover" />
+          {isVideo && (
+            <View style={styles.videoOverlay}>
+              <Icon name="play" size="md" color={Colors.textOnPrimary} />
+            </View>
+          )}
+        </View>
+      ) : (
+        <View style={styles.tilePlaceholder}>
+          <Icon name="photo" size="lg" color={Colors.textMuted} />
+        </View>
+      )}
+      <Text style={styles.tileDate} numberOfLines={1}>
+        {item.date}
+      </Text>
     </View>
-    <Text style={styles.tileDate} numberOfLines={1}>{item.date}</Text>
-  </View>
-);
+  );
+};
 
 // ─── Empty state ──────────────────────────────────────────────────────────────
 
 const EmptyState: React.FC = () => (
   <View style={styles.empty}>
     <Icon name="camera" size="2xl" color={Colors.outlineVariant} />
-    <Text style={styles.emptyText}>No uploads yet</Text>
+    <Text style={styles.emptyText}>No files uploaded yet.</Text>
+  </View>
+);
+
+// ─── Loading state ────────────────────────────────────────────────────────────
+
+const LoadingState: React.FC = () => (
+  <View style={styles.loading}>
+    <ActivityIndicator size="large" color={Colors.primary} />
   </View>
 );
 
@@ -84,10 +113,19 @@ export default function GalleryScreen(): React.ReactElement {
   const router = useRouter();
   const [filter, setFilter] = useState<FilterKey>('all');
 
-  const filtered = useMemo(
-    () => (filter === 'all' ? MOCK_GALLERY : MOCK_GALLERY.filter((g) => g.type === filter)),
-    [filter],
+  const { data: uploads, isLoading, refetch } = useMyUploads();
+
+  const galleryItems = useMemo(
+    () => (uploads ? mapUploadsToGalleryItems(uploads) : []),
+    [uploads],
   );
+
+  const filtered = useMemo(() => {
+    if (filter === 'all') return galleryItems;
+    // For now, show all items regardless of filter since we don't have type info from API
+    // TODO: When API returns upload type, filter by: galleryItems.filter((g) => g.type === filter)
+    return galleryItems;
+  }, [galleryItems, filter]);
 
   return (
     <>
@@ -123,16 +161,27 @@ export default function GalleryScreen(): React.ReactElement {
         </View>
 
         {/* ── Grid ─────────────────────────────────────────────────────── */}
-        <FlatList<GalleryItem>
-          data={filtered}
-          keyExtractor={(item) => item.id}
-          numColumns={3}
-          columnWrapperStyle={styles.gridRow}
-          contentContainerStyle={styles.gridContent}
-          showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => <GridTile item={item} />}
-          ListEmptyComponent={EmptyState}
-        />
+        {isLoading ? (
+          <LoadingState />
+        ) : (
+          <FlatList<GalleryItem>
+            data={filtered}
+            keyExtractor={(item) => item.id}
+            numColumns={3}
+            columnWrapperStyle={filtered.length > 0 ? styles.gridRow : undefined}
+            contentContainerStyle={styles.gridContent}
+            showsVerticalScrollIndicator={false}
+            renderItem={({ item }) => <GridTile item={item} />}
+            ListEmptyComponent={EmptyState}
+            refreshControl={
+              <RefreshControl
+                refreshing={isLoading}
+                onRefresh={refetch}
+                colors={[Colors.primary]}
+              />
+            }
+          />
+        )}
       </SafeAreaView>
     </>
   );
@@ -219,6 +268,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: Colors.border,
+    overflow: 'hidden',
+  },
+  tileImage: {
+    width: '100%',
+    height: '100%',
+  },
+  videoOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   tileDate: {
     fontFamily: FontFamily.regular,
@@ -226,6 +290,14 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     marginTop: Spacing[1],
     textAlign: 'center',
+  },
+
+  // Loading state
+  loading: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: Spacing[16],
   },
 
   // Empty state
