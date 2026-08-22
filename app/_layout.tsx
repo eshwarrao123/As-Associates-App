@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Slot, useRouter, useSegments } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -11,10 +11,11 @@ import {
   Inter_800ExtraBold,
 } from '@expo-google-fonts/inter';
 import { useAuthStore } from '../src/store/auth.store';
-import { Colors, FontFamily, FontSize } from '../src/constants/tokens';
+import { Colors } from '../src/constants/tokens';
 import { getAccessToken } from '../src/services/api/tokenStore';
 import { getMe } from '../src/services/auth/authService';
 import { clearTokens } from '../src/services/api/tokenStore';
+import ErrorBoundary from '../src/components/ErrorBoundary';
 
 // ─── TanStack Query client ────────────────────────────────────────────────────
 
@@ -26,52 +27,6 @@ const queryClient = new QueryClient({
       retryDelay: 1000,
     },
   },
-});
-
-// ─── Error Boundary ───────────────────────────────────────────────────────────
-
-interface ErrorBoundaryState {
-  hasError: boolean;
-  error: Error | null;
-}
-
-class AppErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  ErrorBoundaryState
-> {
-  constructor(props: { children: React.ReactNode }) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return { hasError: true, error };
-  }
-
-  handleReset = () => this.setState({ hasError: false, error: null });
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <View style={eb.container}>
-          <Text style={eb.title}>Something went wrong</Text>
-          <Text style={eb.message}>{this.state.error?.message ?? 'Unknown error'}</Text>
-          <TouchableOpacity style={eb.btn} onPress={this.handleReset}>
-            <Text style={eb.btnText}>Retry</Text>
-          </TouchableOpacity>
-        </View>
-      );
-    }
-    return this.props.children;
-  }
-}
-
-const eb = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, backgroundColor: Colors.background },
-  title: { fontFamily: 'Inter_700Bold', fontSize: 18, color: Colors.textPrimary, marginBottom: 8 },
-  message: { fontFamily: 'Inter_400Regular', fontSize: 13, color: Colors.danger, textAlign: 'center', marginBottom: 24, lineHeight: 20 },
-  btn: { backgroundColor: Colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 },
-  btnText: { fontFamily: 'Inter_700Bold', fontSize: 14, color: '#fff' },
 });
 
 // ─── Loading screen ───────────────────────────────────────────────────────────
@@ -206,12 +161,12 @@ export default function RootLayout(): React.ReactElement | null {
   }
 
   return (
-    <AppErrorBoundary>
+    <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <SafeAreaProvider>
           <AuthGuard />
         </SafeAreaProvider>
       </QueryClientProvider>
-    </AppErrorBoundary>
+    </ErrorBoundary>
   );
 }

@@ -30,6 +30,7 @@ import type { Project, RecentUpload, AttendanceSummary } from '../../src/types/e
 
 // ─── Mock data (replace with TanStack Query hooks) ────────────────────────────
 
+// TODO Phase 3: replace with useQuery — useMyProjects()
 const MOCK_PROJECTS: Project[] = [
   {
     id: '1',
@@ -53,6 +54,7 @@ const MOCK_PROJECTS: Project[] = [
   },
 ];
 
+// TODO Phase 3: replace with useQuery — useAttendanceCalendar()
 const MOCK_ATTENDANCE: AttendanceSummary = {
   present: 18,
   absent: 2,
@@ -60,6 +62,7 @@ const MOCK_ATTENDANCE: AttendanceSummary = {
   totalWorkingDays: 21,
 };
 
+// TODO Phase 3: replace with useQuery — useMyUploads()
 const MOCK_UPLOADS: RecentUpload[] = [
   {
     id: '1',

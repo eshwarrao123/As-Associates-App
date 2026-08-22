@@ -7,9 +7,7 @@ import {
   clearTokens,
 } from './tokenStore';
 import { ApiError } from './types';
-
-// Base URL — defaults to localhost for dev, override via env variable
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
+import { API_BASE_URL } from '../../config/env';
 
 /**
  * Axios client configured with:
@@ -19,7 +17,7 @@ const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000/api/v
  * - Response interceptor for 401 handling with silent token refresh
  */
 const apiClient = axios.create({
-  baseURL: BASE_URL,
+  baseURL: API_BASE_URL,
   timeout: 30_000,
   headers: {
     'Content-Type': 'application/json',
@@ -101,7 +99,7 @@ apiClient.interceptors.response.use(
         const response = await axios.post<{
           accessToken: string;
           refreshToken: string;
-        }>(`${BASE_URL}/auth/refresh`, { refreshToken });
+        }>(`${API_BASE_URL}/auth/refresh`, { refreshToken });
 
         const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
           response.data;
