@@ -6,6 +6,8 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -24,14 +26,11 @@ import {
   InputHeight,
   ButtonHeight,
 } from '../../src/constants/tokens';
+import { useMyProjects } from '../../src/hooks/useMyProjects';
+import { useCreateProgressLog } from '../../src/hooks/useProgressLogs';
+import { getErrorMessage } from '../../src/services/api/errorHandler';
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
-
-const PROJECT_OPTIONS = [
-  'ICICI Bank HQ - Andheri',
-  'Axis Bank - Bandra',
-  'HDFC Bank - Powai',
-];
 
 const WORK_STAGES = [
   'Foundation',
@@ -47,9 +46,83 @@ const WORK_STAGES = [
 export default function ProgressScreen(): React.ReactElement {
   const router = useRouter();
   const { user } = useAuthStore();
-  const [project, setProject] = useState<string | null>(PROJECT_OPTIONS[0]);
+
+  // Fetch projects from API
+  const { data: projects, isLoading: isLoadingProjects } = useMyProjects();
+  const createProgressLog = useCreateProgressLog();
+
+  // Form state
+  const [projectId, setProjectId] = useState<string | null>(null);
   const [stage, setStage] = useState('Foundation');
   const [workDone, setWorkDone] = useState('');
+  const [hoursWorked, setHoursWorked] = useState(8);
+
+  // Set default project when projects load
+  React.useEffect(() => {
+    if (projects && projects.length > 0 && !projectId) {
+      setProjectId(projects[0].id);
+    }
+  }, [projects, projectId]);
+
+  // Get today's date in ISO format (YYYY-MM-DD)
+  const todayDate = new Date().toISOString().split('T')[0];
+
+  // Format today's date for display (DD-MM-YYYY)
+  const displayDate = new Date().toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).replace(/\//g, '-');
+
+  // Convert projects to dropdown options
+  const projectOptions = projects?.map((p) => ({
+    label: `${p.name} - ${p.location}`,
+    value: p.id,
+  })) ?? [];
+
+  const selectedProject = projectOptions.find((opt) => opt.value === projectId);
+
+  // Handle form submission
+  const handleSubmit = () => {
+    if (!projectId) {
+      Alert.alert('Error', 'Please select a project');
+      return;
+    }
+
+    if (!workDone.trim()) {
+      Alert.alert('Error', 'Please describe the work done');
+      return;
+    }
+
+    if (hoursWorked <= 0) {
+      Alert.alert('Error', 'Hours worked must be greater than 0');
+      return;
+    }
+
+    // Combine stage and work description
+    const description = `${stage}: ${workDone}`;
+
+    createProgressLog.mutate(
+      {
+        projectId,
+        description,
+        hoursWorked,
+        date: todayDate,
+      },
+      {
+        onSuccess: () => {
+          Alert.alert('Success', 'Progress log submitted!');
+          // Reset form
+          setWorkDone('');
+          setStage('Foundation');
+          setHoursWorked(8);
+        },
+        onError: (error) => {
+          Alert.alert('Error', getErrorMessage(error));
+        },
+      },
+    );
+  };
 
   return (
     <>
@@ -80,11 +153,11 @@ export default function ProgressScreen(): React.ReactElement {
 
           {/* ── Form ──────────────────────────────────────────────────────── */}
           <Card style={styles.formCard}>
-            {/* Date — presentational; the screen holds no date state */}
+            {/* Date — shows today's date */}
             <View style={styles.field}>
               <Text style={styles.fieldLabel}>Date</Text>
               <View style={styles.inputBox}>
-                <Text style={styles.inputValue}>05-08-2026</Text>
+                <Text style={styles.inputValue}>{displayDate}</Text>
                 <Icon
                   name="calendarOutline"
                   size="md"
@@ -94,14 +167,30 @@ export default function ProgressScreen(): React.ReactElement {
             </View>
 
             {/* Select Project */}
-            <Dropdown
-              label="Select Project"
-              placeholder="Choose a project..."
-              value={project}
-              options={PROJECT_OPTIONS}
-              onSelect={setProject}
-              containerStyle={styles.dropdown}
-            />
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Select Project</Text>
+              {isLoadingProjects ? (
+                <View style={[styles.inputBox, styles.loadingBox]}>
+                  <ActivityIndicator size="small" color={Colors.primary} />
+                </View>
+              ) : projectOptions.length === 0 ? (
+                <View style={[styles.inputBox, styles.emptyBox]}>
+                  <Text style={styles.emptyText}>No projects assigned</Text>
+                </View>
+              ) : (
+                <Dropdown
+                  label=""
+                  placeholder="Choose a project..."
+                  value={selectedProject?.label ?? null}
+                  options={projectOptions.map((opt) => opt.label)}
+                  onSelect={(label) => {
+                    const selected = projectOptions.find((opt) => opt.label === label);
+                    if (selected) setProjectId(selected.value);
+                  }}
+                  containerStyle={styles.dropdown}
+                />
+              )}
+            </View>
 
             {/* Work Stage */}
             <View style={styles.field}>
@@ -147,18 +236,58 @@ export default function ProgressScreen(): React.ReactElement {
                 placeholderTextColor={Colors.textMuted}
                 multiline
                 textAlignVertical="top"
+                editable={!createProgressLog.isPending}
               />
+            </View>
+
+            {/* Hours Worked */}
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Hours Worked</Text>
+              <View style={styles.stepperRow}>
+                <View style={styles.stepper}>
+                  <TouchableOpacity
+                    style={styles.stepBtn}
+                    onPress={() => setHoursWorked((prev) => Math.max(0.5, prev - 0.5))}
+                    disabled={createProgressLog.isPending}
+                  >
+                    <Text style={styles.stepBtnText}>−</Text>
+                  </TouchableOpacity>
+                  <View style={styles.stepDivider} />
+                  <View style={styles.stepValueBox}>
+                    <Text style={styles.hoursValue}>{hoursWorked}</Text>
+                  </View>
+                  <View style={styles.stepDivider} />
+                  <TouchableOpacity
+                    style={styles.stepBtn}
+                    onPress={() => setHoursWorked((prev) => Math.min(24, prev + 0.5))}
+                    disabled={createProgressLog.isPending}
+                  >
+                    <Text style={styles.stepBtnText}>+</Text>
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.hoursSuffix}>hours</Text>
+              </View>
             </View>
           </Card>
 
           {/* ── Save ──────────────────────────────────────────────────────── */}
           <TouchableOpacity
             activeOpacity={0.8}
-            style={styles.saveBtn}
-            onPress={() => {}}
+            style={[
+              styles.saveBtn,
+              createProgressLog.isPending && styles.saveBtnDisabled,
+            ]}
+            onPress={handleSubmit}
+            disabled={createProgressLog.isPending}
           >
-            <Icon name="document" size="md" color={Colors.textOnAccent} />
-            <Text style={styles.saveBtnText}>Save Progress</Text>
+            {createProgressLog.isPending ? (
+              <ActivityIndicator size="small" color={Colors.textOnAccent} />
+            ) : (
+              <>
+                <Icon name="document" size="md" color={Colors.textOnAccent} />
+                <Text style={styles.saveBtnText}>Save Progress</Text>
+              </>
+            )}
           </TouchableOpacity>
         </ScrollView>
 
@@ -340,9 +469,25 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.btn,
     backgroundColor: Colors.accent,
   },
+  saveBtnDisabled: {
+    opacity: 0.6,
+  },
   saveBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
     color: Colors.textOnAccent,
+  },
+
+  // ── Loading and empty states ─────────────────────────────────────────────────
+  loadingBox: {
+    justifyContent: 'center',
+  },
+  emptyBox: {
+    justifyContent: 'center',
+  },
+  emptyText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.md,
+    color: Colors.textMuted,
   },
 });

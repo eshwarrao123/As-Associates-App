@@ -1,5 +1,15 @@
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
+} from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../../src/components/ui/Button';
@@ -11,6 +21,9 @@ import { Dropdown } from '../../src/components/ui/Dropdown';
 import { BottomNav } from '../../src/components/ui/BottomNav';
 import { Colors, FontFamily, FontSize, Spacing, BorderRadius } from '../../src/constants/tokens';
 import type { BadgeVariant } from '../../src/types';
+import { useMyProjects } from '../../src/hooks/useMyProjects';
+import { useMyRequests, useCreateRequest } from '../../src/hooks/useRequests';
+import { getErrorMessage } from '../../src/services/api/errorHandler';
 
 // ─── Types & mock data ────────────────────────────────────────────────────────
 
@@ -19,61 +32,141 @@ type Priority = 'Low' | 'Medium' | 'High';
 
 const REQUEST_TYPES: RequestType[] = ['Material', 'Issue'];
 
-const PROJECT_OPTIONS = [
-  'ICICI Bank HQ - Andheri',
-  'Axis Bank - Bandra',
-  'HDFC Bank - Powai',
-];
-
 const PRIORITY_CONFIG: Record<Priority, string> = {
   Low: Colors.success,
   Medium: Colors.warning,
   High: Colors.danger,
 };
 
-interface RecentRequest {
-  id: string;
-  dotColor: string;
-  typeLabel: string;
-  typeColor: string;
-  title: string;
-  project: string;
-  status: BadgeVariant;
-  age: string;
+// Map UI request types to API request types
+const REQUEST_TYPE_MAP: Record<RequestType, string> = {
+  Material: 'MATERIAL',
+  Issue: 'ISSUE',
+};
+
+// Map API status to BadgeVariant
+function mapStatusToBadge(status: string): BadgeVariant {
+  switch (status) {
+    case 'PENDING':
+      return 'pending';
+    case 'APPROVED':
+      return 'approved';
+    case 'REJECTED':
+      return 'rejected';
+    default:
+      return 'pending';
+  }
 }
 
-const RECENT_REQUESTS: RecentRequest[] = [
-  {
-    id: 'r1',
-    dotColor: Colors.warning,
-    typeLabel: 'Material Request',
-    typeColor: Colors.warning,
-    title: 'Cement Bags x50',
-    project: 'HDFC Bank - Powai',
-    status: 'pending',
-    age: '3 days ago',
-  },
-  {
-    id: 'r2',
-    dotColor: Colors.success,
-    typeLabel: 'Issue Report',
-    typeColor: Colors.success,
-    title: 'Electrical wiring fault',
-    project: 'Axis Bank - Bandra',
-    status: 'approved',
-    age: '1 week ago',
-  },
-];
+// Get type label and color from request type
+function getTypeConfig(type: string): { label: string; color: string } {
+  switch (type) {
+    case 'MATERIAL':
+      return { label: 'Material Request', color: Colors.warning };
+    case 'ISSUE':
+      return { label: 'Issue Report', color: Colors.danger };
+    case 'LEAVE':
+      return { label: 'Leave Request', color: Colors.primary };
+    case 'ADVANCE':
+      return { label: 'Advance Request', color: Colors.success };
+    default:
+      return { label: 'Request', color: Colors.textSecondary };
+  }
+}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function RequestsScreen(): React.ReactElement {
   const router = useRouter();
+
+  // Fetch data from API
+  const { data: projects, isLoading: isLoadingProjects } = useMyProjects();
+  const { data: requests, isLoading: isLoadingRequests, refetch: refetchRequests } = useMyRequests();
+  const createRequest = useCreateRequest();
+
+  // Form state
   const [type, setType] = useState<RequestType>('Material');
-  const [project, setProject] = useState<string | null>(PROJECT_OPTIONS[0]);
+  const [projectId, setProjectId] = useState<string | null>(null);
   const [subject, setSubject] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<Priority>('Medium');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Set default project when projects load
+  React.useEffect(() => {
+    if (projects && projects.length > 0 && !projectId) {
+      setProjectId(projects[0].id);
+    }
+  }, [projects, projectId]);
+
+  // Convert projects to dropdown options
+  const projectOptions = projects?.map((p) => ({
+    label: `${p.name} - ${p.location}`,
+    value: p.id,
+  })) ?? [];
+
+  const selectedProject = projectOptions.find((opt) => opt.value === projectId);
+
+  // Handle pull-to-refresh
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await refetchRequests();
+    setIsRefreshing(false);
+  };
+
+  // Handle form submission
+  const handleSubmit = () => {
+    if (!subject.trim()) {
+      Alert.alert('Error', 'Please enter a subject');
+      return;
+    }
+
+    if (!description.trim()) {
+      Alert.alert('Error', 'Please provide a description');
+      return;
+    }
+
+    // Build description with subject, priority, and details
+    const apiType = REQUEST_TYPE_MAP[type];
+    const fullDescription = `${subject}\n\nPriority: ${priority}\n\n${description}`;
+
+    createRequest.mutate(
+      {
+        type: apiType,
+        description: fullDescription,
+        date: new Date().toISOString().split('T')[0],
+      },
+      {
+        onSuccess: () => {
+          Alert.alert('Success', 'Request submitted successfully!');
+          // Reset form
+          setSubject('');
+          setDescription('');
+          setPriority('Medium');
+          setType('Material');
+        },
+        onError: (error) => {
+          Alert.alert('Error', getErrorMessage(error));
+        },
+      },
+    );
+  };
+
+  // Format relative time (e.g., "3 days ago")
+  const formatRelativeTime = (dateString: string): string => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return '1 day ago';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 14) return '1 week ago';
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+    if (diffDays < 60) return '1 month ago';
+    return `${Math.floor(diffDays / 30)} months ago`;
+  };
 
   return (
     <>
@@ -91,6 +184,9 @@ export default function RequestsScreen(): React.ReactElement {
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
+          }
         >
           {/* Request type segmented control */}
           <View style={styles.segment}>
@@ -102,6 +198,7 @@ export default function RequestsScreen(): React.ReactElement {
                   activeOpacity={0.8}
                   onPress={() => setType(t)}
                   style={[styles.segmentItem, active ? styles.segmentActive : styles.segmentInactive]}
+                  disabled={createRequest.isPending}
                 >
                   <Text style={active ? styles.segmentTextActive : styles.segmentTextInactive}>
                     {t}
@@ -114,17 +211,34 @@ export default function RequestsScreen(): React.ReactElement {
           {/* Request details */}
           <Card style={styles.section}>
             <Text style={styles.sectionLabel}>REQUEST DETAILS</Text>
-            <Dropdown
-              label="Select Project"
-              value={project}
-              options={PROJECT_OPTIONS}
-              onSelect={setProject}
-            />
+            <View>
+              <Text style={styles.fieldLabel}>Select Project (Optional)</Text>
+              {isLoadingProjects ? (
+                <View style={[styles.dropdownPlaceholder]}>
+                  <ActivityIndicator size="small" color={Colors.primary} />
+                </View>
+              ) : projectOptions.length === 0 ? (
+                <View style={[styles.dropdownPlaceholder]}>
+                  <Text style={styles.emptyText}>No projects assigned</Text>
+                </View>
+              ) : (
+                <Dropdown
+                  label=""
+                  value={selectedProject?.label ?? null}
+                  options={projectOptions.map((opt) => opt.label)}
+                  onSelect={(label) => {
+                    const selected = projectOptions.find((opt) => opt.label === label);
+                    if (selected) setProjectId(selected.value);
+                  }}
+                />
+              )}
+            </View>
             <Input
               label="Subject"
               placeholder="Brief summary of your request"
               value={subject}
               onChangeText={setSubject}
+              editable={!createRequest.isPending}
             />
             <View>
               <Text style={styles.fieldLabel}>Description</Text>
@@ -136,6 +250,7 @@ export default function RequestsScreen(): React.ReactElement {
                 placeholderTextColor={Colors.textSecondary}
                 multiline
                 textAlignVertical="top"
+                editable={!createRequest.isPending}
               />
             </View>
           </Card>
@@ -158,6 +273,7 @@ export default function RequestsScreen(): React.ReactElement {
                         ? { backgroundColor: color, borderColor: color }
                         : { backgroundColor: Colors.surface, borderColor: color },
                     ]}
+                    disabled={createRequest.isPending}
                   >
                     <Text
                       style={[
@@ -176,34 +292,59 @@ export default function RequestsScreen(): React.ReactElement {
           {/* Attachments */}
           <Card style={styles.section}>
             <Text style={styles.sectionLabel}>ATTACHMENTS (OPTIONAL)</Text>
-            <TouchableOpacity activeOpacity={0.7} style={styles.dropzone}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={styles.dropzone}
+              disabled={createRequest.isPending}
+            >
               <Text style={styles.dropzoneIcon}>📷</Text>
               <Text style={styles.dropzoneText}>Tap to upload photo or file</Text>
             </TouchableOpacity>
           </Card>
 
-          <Button label="Submit Request" onPress={() => {}} />
+          <Button
+            label={createRequest.isPending ? 'Submitting...' : 'Submit Request'}
+            onPress={handleSubmit}
+            disabled={createRequest.isPending}
+          />
 
           {/* Existing requests */}
           <Text style={styles.recentHeading}>My Recent Requests</Text>
-          {RECENT_REQUESTS.map((req) => (
-            <Card key={req.id} style={styles.requestCard}>
-              <View style={styles.requestTop}>
-                <View style={[styles.dot, { backgroundColor: req.dotColor }]} />
-                <View style={[styles.typeChip, { backgroundColor: `${req.typeColor}18` }]}>
-                  <Text style={[styles.typeChipText, { color: req.typeColor }]}>
-                    {req.typeLabel}
-                  </Text>
-                </View>
-              </View>
-              <Text style={styles.requestTitle}>{req.title}</Text>
-              <Text style={styles.requestProject}>{req.project}</Text>
-              <View style={styles.requestFooter}>
-                <Badge variant={req.status} />
-                <Text style={styles.requestAge}>{req.age}</Text>
-              </View>
+
+          {isLoadingRequests ? (
+            <Card style={styles.loadingCard}>
+              <ActivityIndicator size="large" color={Colors.primary} />
             </Card>
-          ))}
+          ) : !requests || requests.length === 0 ? (
+            <Card style={styles.emptyCard}>
+              <Text style={styles.emptyCardText}>No requests submitted yet.</Text>
+            </Card>
+          ) : (
+            requests.map((req) => {
+              const typeConfig = getTypeConfig(req.type);
+              const status = mapStatusToBadge(req.status);
+              // Extract title from description (first line)
+              const title = req.description.split('\n')[0] || 'Request';
+
+              return (
+                <Card key={req.id} style={styles.requestCard}>
+                  <View style={styles.requestTop}>
+                    <View style={[styles.dot, { backgroundColor: typeConfig.color }]} />
+                    <View style={[styles.typeChip, { backgroundColor: `${typeConfig.color}18` }]}>
+                      <Text style={[styles.typeChipText, { color: typeConfig.color }]}>
+                        {typeConfig.label}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles.requestTitle}>{title}</Text>
+                  <View style={styles.requestFooter}>
+                    <Badge variant={status} />
+                    <Text style={styles.requestAge}>{formatRelativeTime(req.createdAt)}</Text>
+                  </View>
+                </Card>
+              );
+            })
+          )}
         </ScrollView>
 
         <BottomNav />
@@ -318,4 +459,35 @@ const styles = StyleSheet.create({
   requestProject: { fontFamily: FontFamily.regular, fontSize: 12, color: Colors.textSecondary },
   requestFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   requestAge: { fontFamily: FontFamily.regular, fontSize: 11, color: '#9CA3AF' },
+
+  // Loading and empty states
+  loadingCard: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing[6],
+  },
+  emptyCard: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing[6],
+  },
+  emptyCardText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.base,
+    color: Colors.textSecondary,
+  },
+  dropdownPlaceholder: {
+    height: 48,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: BorderRadius.btn,
+    backgroundColor: Colors.surface,
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+  },
+  emptyText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.base,
+    color: Colors.textMuted,
+  },
 });

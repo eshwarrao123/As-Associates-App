@@ -1,5 +1,6 @@
 import React, { useCallback } from 'react';
 import {
+  ActivityIndicator,
   Image,
   ScrollView,
   StyleSheet,
@@ -10,6 +11,7 @@ import {
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../src/store/auth.store';
+import { useMe } from '../../src/hooks/useMe';
 import { Avatar } from '../../src/components/ui/Avatar';
 import { Badge } from '../../src/components/ui/Badge';
 import { ProgressBar } from '../../src/components/ui/ProgressBar';
@@ -216,7 +218,8 @@ const UploadThumbnail: React.FC<UploadThumbnailProps> = ({ upload, onPress }) =>
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function EmployeeHomeScreen(): React.ReactElement {
-  const { user, logout } = useAuthStore();
+  const { user: storeUser } = useAuthStore();
+  const { data: meData, isLoading: isMeLoading } = useMe();
   const router = useRouter();
   const greeting = getGreeting();
 
@@ -234,8 +237,16 @@ export default function EmployeeHomeScreen(): React.ReactElement {
     // TODO: navigate to upload detail
   }, []);
 
-  // Derive first name for greeting
-  const userName = user?.name ?? 'Employee';
+  // Use API data if available, fallback to store user for immediate display
+  const displayName = meData
+    ? `${meData.firstName} ${meData.lastName}`
+    : storeUser?.name ?? 'Employee';
+
+  const displayDesignation = meData?.designation ?? storeUser?.department;
+
+  const displayInitials = meData
+    ? `${meData.firstName[0]}${meData.lastName[0]}`.toUpperCase()
+    : storeUser?.avatarInitials ?? 'U';
 
   return (
     <>
@@ -260,19 +271,25 @@ export default function EmployeeHomeScreen(): React.ReactElement {
               resizeMode="contain"
             />
             <Avatar
-              initials={user?.avatarInitials ?? 'U'}
+              initials={displayInitials}
               size="sm"
             />
           </View>
 
           {/* ── Greeting ───────────────────────────────────────────────── */}
           <View style={styles.greetingSection}>
-            <Text style={styles.greetingText}>
-              {greeting},{'\n'}{userName}
-            </Text>
-            <Text style={styles.greetingSub}>
-              Here is your field summary for today.
-            </Text>
+            {isMeLoading && !storeUser ? (
+              <ActivityIndicator size="small" color={Colors.primary} />
+            ) : (
+              <>
+                <Text style={styles.greetingText}>
+                  {greeting},{'\n'}{displayName}
+                </Text>
+                <Text style={styles.greetingSub}>
+                  Here is your field summary for today.
+                </Text>
+              </>
+            )}
           </View>
 
           {/* ── Stats Row (2 cards) ────────────────────────────────────── */}

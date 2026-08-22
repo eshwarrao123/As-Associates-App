@@ -1,29 +1,62 @@
-import React, { useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../src/store/auth.store';
+import { useAttendanceCalendar, useCheckIn } from '../../src/hooks/useAttendance';
+import { getErrorMessage } from '../../src/services/api/errorHandler';
 import { Avatar } from '../../src/components/ui/Avatar';
 import { Card } from '../../src/components/ui/Card';
 import { Icon } from '../../src/components/ui/Icon';
 import { BottomNav } from '../../src/components/ui/BottomNav';
 import { Colors, FontFamily, FontSize, Spacing, BorderRadius } from '../../src/constants/tokens';
 
-// ─── Calendar model — July 2026 ───────────────────────────────────────────────
-// July 1 2026 is a Wednesday → leading blank cells = 3 (Sun..Tue)
+// ─── Calendar model ───────────────────────────────────────────────────────────
 
-type DayStatus = 'present' | 'absent' | 'today' | 'future' | 'none';
+type DayStatus = 'present' | 'absent' | 'late' | 'halfday' | 'leave' | 'today' | 'future' | 'none';
 
-const LEADING_BLANKS = 3;
-const DAYS_IN_MONTH = 31;
 const WEEKDAY_HEADERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-function statusForDay(day: number): DayStatus {
-  if (day === 20) return 'today';
-  if (day === 6 || day === 13) return 'absent';
-  if (day >= 1 && day <= 18) return 'present';
-  if (day >= 21) return 'future';
-  return 'none';
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+
+/**
+ * Maps API attendance status to UI day status.
+ */
+function mapApiStatusToDayStatus(apiStatus: string): DayStatus {
+  switch (apiStatus) {
+    case 'PRESENT':
+      return 'present';
+    case 'ABSENT':
+      return 'absent';
+    case 'LATE':
+      return 'late';
+    case 'HALF_DAY':
+      return 'halfday';
+    case 'LEAVE':
+      return 'leave';
+    default:
+      return 'none';
+  }
+}
+
+/**
+ * Formats ISO time string to display time (e.g., "9:14 AM").
+ */
+function formatTime(isoTime?: string): string {
+  if (!isoTime) return '';
+  try {
+    const date = new Date(isoTime);
+    return date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+  } catch {
+    return '';
+  }
 }
 
 // column index 0 = Sunday, 6 = Saturday
@@ -36,12 +69,89 @@ function isWeekend(cellIndex: number): boolean {
 
 export default function AttendanceScreen(): React.ReactElement {
   const { user } = useAuthStore();
-  const [marked, setMarked] = useState(false);
+  const now = new Date();
+  const [currentMonth, setCurrentMonth] = useState(now.getMonth() + 1); // 1-12
+  const [currentYear, setCurrentYear] = useState(now.getFullYear());
+
+  const { data: attendanceData, isLoading } = useAttendanceCalendar(currentMonth, currentYear);
+  const checkInMutation = useCheckIn();
+
+  // Build attendance map by date
+  const attendanceMap = useMemo(() => {
+    const map = new Map<string, { status: DayStatus; checkInTime?: string }>();
+    if (attendanceData?.data) {
+      attendanceData.data.forEach((record) => {
+        const day = new Date(record.date).getDate();
+        map.set(String(day), {
+          status: mapApiStatusToDayStatus(record.status),
+          checkInTime: record.checkInTime,
+        });
+      });
+    }
+    return map;
+  }, [attendanceData]);
+
+  // Today's info
+  const today = now.getDate();
+  const todayStatus = attendanceMap.get(String(today));
+  const isMarked = todayStatus && todayStatus.status !== 'none';
+
+  // Calculate calendar grid
+  const firstDayOfMonth = new Date(currentYear, currentMonth - 1, 1).getDay();
+  const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
 
   const cells: (number | null)[] = [
-    ...Array<null>(LEADING_BLANKS).fill(null),
-    ...Array.from({ length: DAYS_IN_MONTH }, (_, i) => i + 1),
+    ...Array<null>(firstDayOfMonth).fill(null),
+    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
   ];
+
+  const handleCheckIn = () => {
+    checkInMutation.mutate(undefined, {
+      onError: (error) => {
+        const message = getErrorMessage(error);
+        Alert.alert('Error', message);
+      },
+    });
+  };
+
+  const handlePrevMonth = () => {
+    if (currentMonth === 1) {
+      setCurrentMonth(12);
+      setCurrentYear(currentYear - 1);
+    } else {
+      setCurrentMonth(currentMonth - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (currentMonth === 12) {
+      setCurrentMonth(1);
+      setCurrentYear(currentYear + 1);
+    } else {
+      setCurrentMonth(currentMonth + 1);
+    }
+  };
+
+  function statusForDay(day: number): DayStatus {
+    // Check if it's today
+    if (
+      day === today &&
+      currentMonth === now.getMonth() + 1 &&
+      currentYear === now.getFullYear()
+    ) {
+      return 'today';
+    }
+
+    // Check if it's a future date
+    const cellDate = new Date(currentYear, currentMonth - 1, day);
+    if (cellDate > now) {
+      return 'future';
+    }
+
+    // Get status from API data
+    const record = attendanceMap.get(String(day));
+    return record?.status ?? 'none';
+  }
 
   return (
     <>
@@ -68,21 +178,32 @@ export default function AttendanceScreen(): React.ReactElement {
           {/* ── Today ─────────────────────────────────────────────────────── */}
           <View style={styles.todayBlock}>
             <Text style={styles.todayLabel}>Today</Text>
-            <Text style={styles.todayDate}>20 July 2026</Text>
+            <Text style={styles.todayDate}>
+              {today} {MONTH_NAMES[now.getMonth()]} {now.getFullYear()}
+            </Text>
 
-            {marked ? (
+            {isMarked && todayStatus ? (
               <View style={styles.markedRow}>
                 <Icon name="check" size="md" color={Colors.success} />
-                <Text style={styles.markedText}>Marked Present at 9:14 AM</Text>
+                <Text style={styles.markedText}>
+                  Marked Present at {formatTime(todayStatus.checkInTime)}
+                </Text>
               </View>
             ) : (
               <TouchableOpacity
                 activeOpacity={0.85}
                 style={styles.presentBtn}
-                onPress={() => setMarked(true)}
+                onPress={handleCheckIn}
+                disabled={checkInMutation.isPending}
               >
-                <Icon name="checkCircle" size="md" color={Colors.textOnPrimary} />
-                <Text style={styles.presentBtnText}>Mark Present</Text>
+                {checkInMutation.isPending ? (
+                  <ActivityIndicator size="small" color={Colors.textOnPrimary} />
+                ) : (
+                  <>
+                    <Icon name="checkCircle" size="md" color={Colors.textOnPrimary} />
+                    <Text style={styles.presentBtnText}>Mark Present</Text>
+                  </>
+                )}
               </TouchableOpacity>
             )}
           </View>
@@ -90,11 +211,13 @@ export default function AttendanceScreen(): React.ReactElement {
           {/* ── Calendar ──────────────────────────────────────────────────── */}
           <Card style={styles.calendarCard}>
             <View style={styles.calHeader}>
-              <TouchableOpacity hitSlop={12} activeOpacity={0.7}>
+              <TouchableOpacity hitSlop={12} activeOpacity={0.7} onPress={handlePrevMonth}>
                 <Text style={styles.calArrow}>‹</Text>
               </TouchableOpacity>
-              <Text style={styles.calMonth}>July 2026</Text>
-              <TouchableOpacity hitSlop={12} activeOpacity={0.7}>
+              <Text style={styles.calMonth}>
+                {MONTH_NAMES[currentMonth - 1]} {currentYear}
+              </Text>
+              <TouchableOpacity hitSlop={12} activeOpacity={0.7} onPress={handleNextMonth}>
                 <Text style={styles.calArrow}>›</Text>
               </TouchableOpacity>
             </View>
@@ -107,26 +230,32 @@ export default function AttendanceScreen(): React.ReactElement {
               ))}
             </View>
 
-            <View style={styles.grid}>
-              {cells.map((day, index) => {
-                if (day === null) {
-                  return <View key={`b${index}`} style={styles.dayCell} />;
-                }
-                const status = statusForDay(day);
-                const weekend = isWeekend(index);
-                const dot = dotStyle(status);
+            {isLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={Colors.primary} />
+              </View>
+            ) : (
+              <View style={styles.grid}>
+                {cells.map((day, index) => {
+                  if (day === null) {
+                    return <View key={`b${index}`} style={styles.dayCell} />;
+                  }
+                  const status = statusForDay(day);
+                  const weekend = isWeekend(index);
+                  const dot = dotStyle(status);
 
-                return (
-                  <View key={day} style={styles.dayCell}>
-                    <View style={[styles.dayCircle, circleStyle(status)]}>
-                      <Text style={dayTextStyle(status, weekend)}>{day}</Text>
+                  return (
+                    <View key={day} style={styles.dayCell}>
+                      <View style={[styles.dayCircle, circleStyle(status)]}>
+                        <Text style={dayTextStyle(status, weekend)}>{day}</Text>
+                      </View>
+                      {/* Reserve dot height on every cell so rows stay aligned */}
+                      <View style={[styles.dayDot, dot]} />
                     </View>
-                    {/* Reserve dot height on every cell so rows stay aligned */}
-                    <View style={[styles.dayDot, dot]} />
-                  </View>
-                );
-              })}
-            </View>
+                  );
+                })}
+              </View>
+            )}
 
             <View style={styles.legendDivider} />
 
@@ -145,17 +274,23 @@ export default function AttendanceScreen(): React.ReactElement {
           {/* ── Stats ─────────────────────────────────────────────────────── */}
           <Card noPadding style={styles.statsCard}>
             <View style={styles.statCell}>
-              <Text style={styles.statValue}>21</Text>
+              <Text style={styles.statValue}>
+                {attendanceData?.summary?.present ?? 0}
+              </Text>
               <Text style={styles.statLabel}>Present</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statCell}>
-              <Text style={styles.statValue}>3</Text>
+              <Text style={styles.statValue}>
+                {attendanceData?.summary?.absent ?? 0}
+              </Text>
               <Text style={styles.statLabel}>Absent</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statCell}>
-              <Text style={styles.statValue}>24</Text>
+              <Text style={styles.statValue}>
+                {attendanceData?.summary?.totalWorkingDays ?? 0}
+              </Text>
               <Text style={styles.statLabel}>Working Days</Text>
             </View>
           </Card>
@@ -178,9 +313,17 @@ function circleStyle(status: DayStatus) {
 
 function dotStyle(status: DayStatus) {
   switch (status) {
-    case 'present': return styles.dotPresent;
-    case 'absent':  return styles.dotAbsent;
-    default:        return undefined;
+    case 'present':
+    case 'late':
+      return styles.dotPresent;
+    case 'absent':
+      return styles.dotAbsent;
+    case 'halfday':
+      return styles.dotHalfDay;
+    case 'leave':
+      return styles.dotLeave;
+    default:
+      return undefined;
   }
 }
 
@@ -351,6 +494,14 @@ const styles = StyleSheet.create({
   },
   dotPresent: { backgroundColor: Colors.success },
   dotAbsent: { backgroundColor: Colors.danger },
+  dotHalfDay: { backgroundColor: Colors.warning },
+  dotLeave: { backgroundColor: Colors.textMuted },
+
+  loadingContainer: {
+    height: 200,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 
   legendDivider: {
     height: 1,

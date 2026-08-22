@@ -1,7 +1,9 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   Image,
+  RefreshControl,
   StyleSheet,
   Text,
   TextInput,
@@ -11,6 +13,7 @@ import {
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../src/store/auth.store';
+import { useMyProjects } from '../../src/hooks/useMyProjects';
 import { ProjectCard } from '../../src/components/employee/ProjectCard';
 import { Avatar } from '../../src/components/ui/Avatar';
 import { BottomNav } from '../../src/components/ui/BottomNav';
@@ -27,49 +30,7 @@ import type { Project } from '../../src/types/employee';
 import type { BadgeVariant } from '../../src/types';
 
 // ─── Mock data (replace with TanStack Query) ──────────────────────────────────
-
-const MOCK_ALL_PROJECTS: Project[] = [
-  {
-    id: '1',
-    name: 'ICICI Bank HQ',
-    client: 'ICICI Bank',
-    location: 'BKC, Mumbai',
-    status: 'ongoing',
-    progress: 65,
-    startDate: '2024-01-15',
-    endDate: '2024-08-30',
-  },
-  {
-    id: '2',
-    name: 'Godrej One Retrofit',
-    client: 'Godrej Properties',
-    location: 'Vikhroli, Mumbai',
-    status: 'ongoing',
-    progress: 30,
-    startDate: '2024-03-01',
-    endDate: '2024-12-15',
-  },
-  {
-    id: '3',
-    name: 'Oberoi Sky Heights',
-    client: 'Oberoi Realty',
-    location: 'Borivali, Mumbai',
-    status: 'completed',
-    progress: 100,
-    startDate: '2023-06-01',
-    endDate: '2024-02-28',
-  },
-  {
-    id: '4',
-    name: 'HUL Corporate Campus',
-    client: 'Hindustan Unilever',
-    location: 'Andheri, Mumbai',
-    status: 'upcoming',
-    progress: 45,
-    startDate: '2024-02-10',
-    endDate: '2024-11-30',
-  },
-];
+// Mock data removed - using real API via useMyProjects()
 
 // ─── Filter tabs ──────────────────────────────────────────────────────────────
 
@@ -89,19 +50,24 @@ const FILTER_TABS: FilterTab[] = [
 
 // ─── Empty state ──────────────────────────────────────────────────────────────
 
-const EmptyState: React.FC<{ filter: FilterOption; query: string }> = ({
+const EmptyState: React.FC<{ filter: FilterOption; query: string; isError?: boolean }> = ({
   filter,
   query,
+  isError,
 }) => (
   <View style={styles.emptyState}>
     <Icon name="projectsOutline" size="2xl" color={Colors.outlineVariant} />
-    <Text style={styles.emptyTitle}>No Projects Found</Text>
+    <Text style={styles.emptyTitle}>
+      {isError ? 'Failed to load projects' : 'No Projects Found'}
+    </Text>
     <Text style={styles.emptyBody}>
-      {query.trim()
-        ? `No projects match "${query.trim()}".`
-        : filter === 'all'
-          ? 'You have no projects assigned yet.'
-          : `No projects with status "${filter}".`}
+      {isError
+        ? 'Failed to load projects. Pull down to refresh.'
+        : query.trim()
+          ? `No projects match "${query.trim()}".`
+          : filter === 'all'
+            ? 'You have no projects assigned yet.'
+            : `No projects with status "${filter}".`}
     </Text>
   </View>
 );
@@ -111,14 +77,17 @@ const EmptyState: React.FC<{ filter: FilterOption; query: string }> = ({
 export default function MyProjectsScreen(): React.ReactElement {
   const router = useRouter();
   const { user } = useAuthStore();
+  const { data: projects, isLoading, isError, refetch } = useMyProjects();
   const [activeFilter, setActiveFilter] = useState<FilterOption>('all');
   const [query, setQuery] = useState('');
 
   const filteredProjects = useMemo(() => {
+    if (!projects) return [];
+
     const byStatus =
       activeFilter === 'all'
-        ? MOCK_ALL_PROJECTS
-        : MOCK_ALL_PROJECTS.filter((p) => p.status === activeFilter);
+        ? projects
+        : projects.filter((p) => p.status === activeFilter);
 
     const term = query.trim().toLowerCase();
     if (!term) return byStatus;
@@ -129,7 +98,7 @@ export default function MyProjectsScreen(): React.ReactElement {
         p.client.toLowerCase().includes(term) ||
         p.location.toLowerCase().includes(term),
     );
-  }, [activeFilter, query]);
+  }, [projects, activeFilter, query]);
 
   const handleProjectPress = useCallback(
     (project: Project) => {
@@ -140,6 +109,38 @@ export default function MyProjectsScreen(): React.ReactElement {
     },
     [router],
   );
+
+  // Show loading indicator while fetching initial data
+  if (isLoading && !projects) {
+    return (
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
+        <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+          <View style={styles.appBar}>
+            <Image
+              source={require('../../assets/logo-icon.png')}
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                overflow: 'hidden',
+              }}
+              resizeMode="contain"
+            />
+            <Avatar
+              initials={user?.avatarInitials ?? 'U'}
+              size="sm"
+              style={styles.appBarAvatar}
+            />
+          </View>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+          </View>
+          <BottomNav />
+        </SafeAreaView>
+      </>
+    );
+  }
 
   return (
     <>
@@ -178,6 +179,14 @@ export default function MyProjectsScreen(): React.ReactElement {
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          refreshControl={
+            <RefreshControl
+              refreshing={isLoading && !!projects}
+              onRefresh={() => void refetch()}
+              colors={[Colors.primary]}
+              tintColor={Colors.primary}
+            />
+          }
           ListHeaderComponent={
             <View>
               {/* ── Page Heading ──────────────────────────────────────── */}
@@ -227,7 +236,7 @@ export default function MyProjectsScreen(): React.ReactElement {
             </View>
           }
           ListEmptyComponent={
-            <EmptyState filter={activeFilter} query={query} />
+            <EmptyState filter={activeFilter} query={query} isError={isError} />
           }
           ItemSeparatorComponent={() => <View style={styles.separator} />}
         />
@@ -366,5 +375,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     maxWidth: 240,
     lineHeight: 20,
+  },
+
+  // Loading container
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

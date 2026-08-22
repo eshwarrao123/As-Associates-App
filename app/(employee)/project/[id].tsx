@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,
@@ -8,6 +9,7 @@ import {
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useProject } from '../../../src/hooks/useProject';
 import { Avatar } from '../../../src/components/ui/Avatar';
 import { Badge } from '../../../src/components/ui/Badge';
 import { Card } from '../../../src/components/ui/Card';
@@ -23,40 +25,12 @@ import {
 import type { BadgeVariant } from '../../../src/types';
 
 // ─── Mock data (replace with TanStack Query) ──────────────────────────────────
-
-interface ProjectDetail {
-  name: string;
-  client: string;
-  location: string;
-  status: BadgeVariant;
-  scope: string;
-  startDate: string;
-  targetEnd: string;
-  progress: number;
-}
-
-const PROJECT: ProjectDetail = {
-  name: 'HDFC Bank - Powai',
-  client: 'HDFC Bank Ltd.',
-  location: 'Powai, Mumbai',
-  status: 'ongoing',
-  scope:
-    'Complete interior renovation of the Powai branch including new teller counters, customer waiting area redesign, and updated ATM vestibule to align with new corporate branding standards. Expected to handle night shifts to minimize daytime disruption.',
-  startDate: '12 Oct 2023',
-  targetEnd: '30 Nov 2023',
-  progress: 45,
-};
+// Mock data removed - using real API via useProject(id)
 
 interface TeamMember {
   id: string;
   initials: string;
 }
-
-const TEAM: TeamMember[] = [
-  { id: 'm1', initials: 'RK' },
-  { id: 'm2', initials: 'AS' },
-  { id: 'm3', initials: 'VP' },
-];
 
 const TEAM_OVERFLOW = 2;
 
@@ -68,7 +42,65 @@ type Tab = (typeof TABS)[number];
 export default function EmployeeProjectDetailScreen(): React.ReactElement {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { data: project, isLoading, isError } = useProject(id ?? '');
   const [tab, setTab] = useState<Tab>('Overview');
+
+  // Map team members from API to display format
+  const teamMembers: TeamMember[] =
+    project?.team?.slice(0, 3).map((member) => ({
+      id: member.id,
+      initials: `${member.firstName[0]}${member.lastName[0]}`.toUpperCase(),
+    })) ?? [];
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
+        <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+          <View style={styles.appBar}>
+            <TouchableOpacity
+              hitSlop={12}
+              activeOpacity={0.7}
+              onPress={() => router.back()}
+            >
+              <Icon name="back" size="lg" color={Colors.primaryDark} />
+            </TouchableOpacity>
+            <Text style={styles.appBarTitle}>Project Details</Text>
+            <View style={styles.appBarSpacer} />
+          </View>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+          </View>
+        </SafeAreaView>
+      </>
+    );
+  }
+
+  // Show error state
+  if (isError || !project) {
+    return (
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
+        <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+          <View style={styles.appBar}>
+            <TouchableOpacity
+              hitSlop={12}
+              activeOpacity={0.7}
+              onPress={() => router.back()}
+            >
+              <Icon name="back" size="lg" color={Colors.primaryDark} />
+            </TouchableOpacity>
+            <Text style={styles.appBarTitle}>Project Details</Text>
+            <View style={styles.appBarSpacer} />
+          </View>
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>Failed to load project details.</Text>
+          </View>
+        </SafeAreaView>
+      </>
+    );
+  }
 
   return (
     <>
@@ -98,8 +130,8 @@ export default function EmployeeProjectDetailScreen(): React.ReactElement {
           {/* ── Title Block ─────────────────────────────────────────────── */}
           <View style={styles.titleBlock}>
             <View style={styles.titleRow}>
-              <Text style={styles.projectName}>{PROJECT.name}</Text>
-              <Badge variant={PROJECT.status} style={styles.titleBadge} />
+              <Text style={styles.projectName}>{project.name}</Text>
+              <Badge variant={project.status} style={styles.titleBadge} />
             </View>
 
             <View style={styles.metaRow}>
@@ -108,7 +140,7 @@ export default function EmployeeProjectDetailScreen(): React.ReactElement {
                 size="sm"
                 color={Colors.textMuted}
               />
-              <Text style={styles.metaText}>{PROJECT.client}</Text>
+              <Text style={styles.metaText}>{project.client}</Text>
 
               <View style={styles.metaDot} />
 
@@ -117,7 +149,7 @@ export default function EmployeeProjectDetailScreen(): React.ReactElement {
                 size="sm"
                 color={Colors.textMuted}
               />
-              <Text style={styles.metaText}>{PROJECT.location}</Text>
+              <Text style={styles.metaText}>{project.location}</Text>
             </View>
           </View>
 
@@ -147,7 +179,7 @@ export default function EmployeeProjectDetailScreen(): React.ReactElement {
               {/* ── Project Scope ───────────────────────────────────────── */}
               <Card style={styles.section}>
                 <Text style={styles.sectionLabel}>PROJECT SCOPE</Text>
-                <Text style={styles.scopeText}>{PROJECT.scope}</Text>
+                <Text style={styles.scopeText}>{project.scope}</Text>
               </Card>
 
               {/* ── Timeline ────────────────────────────────────────────── */}
@@ -157,14 +189,14 @@ export default function EmployeeProjectDetailScreen(): React.ReactElement {
                 <View style={styles.dateRow}>
                   <View style={styles.dateCol}>
                     <Text style={styles.dateLabel}>Start Date</Text>
-                    <Text style={styles.dateValue}>{PROJECT.startDate}</Text>
+                    <Text style={styles.dateValue}>{project.startDate}</Text>
                   </View>
 
                   <View style={styles.dateDivider} />
 
                   <View style={[styles.dateCol, styles.dateColEnd]}>
                     <Text style={styles.dateLabel}>Target End</Text>
-                    <Text style={styles.dateValue}>{PROJECT.targetEnd}</Text>
+                    <Text style={styles.dateValue}>{project.targetEnd}</Text>
                   </View>
                 </View>
 
@@ -172,11 +204,11 @@ export default function EmployeeProjectDetailScreen(): React.ReactElement {
 
                 <View style={styles.progressHead}>
                   <Text style={styles.progressLabel}>Overall Progress</Text>
-                  <Text style={styles.progressPct}>{PROJECT.progress}%</Text>
+                  <Text style={styles.progressPct}>{project.progress}%</Text>
                 </View>
 
                 <ProgressBar
-                  value={PROJECT.progress}
+                  value={project.progress}
                   showLabel={false}
                   fillColor={Colors.primaryDark}
                 />
@@ -188,7 +220,7 @@ export default function EmployeeProjectDetailScreen(): React.ReactElement {
 
                 <View style={styles.teamRow}>
                   <View style={styles.avatarStack}>
-                    {TEAM.map((member, index) => (
+                    {teamMembers.map((member, index) => (
                       <Avatar
                         key={member.id}
                         initials={member.initials}
@@ -201,9 +233,11 @@ export default function EmployeeProjectDetailScreen(): React.ReactElement {
                       />
                     ))}
 
-                    <View style={[styles.overflowChip, styles.avatarOverlap]}>
-                      <Text style={styles.overflowText}>+{TEAM_OVERFLOW}</Text>
-                    </View>
+                    {TEAM_OVERFLOW > 0 && (
+                      <View style={[styles.overflowChip, styles.avatarOverlap]}>
+                        <Text style={styles.overflowText}>+{TEAM_OVERFLOW}</Text>
+                      </View>
+                    )}
                   </View>
 
                   <TouchableOpacity
@@ -513,5 +547,24 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.bold,
     fontSize: FontSize.sm,
     color: Colors.textOnPrimary,
+  },
+
+  // Loading and error states
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing[4],
+  },
+  errorText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.md,
+    color: Colors.danger,
+    textAlign: 'center',
   },
 });
