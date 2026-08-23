@@ -98,30 +98,35 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
 
   // ─── loginAction: authenticate user via API ────────────────────────────────
   loginAction: async (employeeCode: string, password: string) => {
+    console.log('loginAction: calling API', { employeeCode });
     set({ isLoading: true, error: null });
 
     try {
       const response = await authService.login(employeeCode, password);
+      console.log('loginAction: API success', { response });
 
       // Store tokens in secure storage
       await Promise.all([
         tokenStore.setAccessToken(response.accessToken),
         tokenStore.setRefreshToken(response.refreshToken),
       ]);
+      console.log('loginAction: tokens stored');
 
       // Map API user shape to local User type
       const user: User = {
         id: response.user.id,
         name: `${response.user.firstName} ${response.user.lastName}`,
         email: response.user.email,
-        role: response.user.role.toLowerCase() as UserRole,
+        role: response.user.role as UserRole,
         department: response.user.department,
         avatarInitials: `${response.user.firstName[0]}${response.user.lastName[0]}`.toUpperCase(),
         mustChangePassword: response.mustChangePassword,
       };
+      console.log('loginAction: user mapped', { user });
 
       // Persist user to AsyncStorage for hydration
       await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
+      console.log('loginAction: user persisted to AsyncStorage');
 
       set({
         user,
@@ -131,7 +136,13 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
         isLoading: false,
         error: null,
       });
+      console.log('loginAction: store updated', {
+        isAuthenticated: true,
+        role: user.role,
+        userName: user.name,
+      });
     } catch (error) {
+      console.log('loginAction: error caught', { error });
       const errorMessage =
         error instanceof Error ? error.message : 'An error occurred';
 

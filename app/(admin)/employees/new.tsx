@@ -23,7 +23,8 @@ export default function AddEmployeeScreen(): React.ReactElement {
   const router = useRouter();
   const createEmployee = useCreateEmployee();
 
-  const [fullName,    setFullName]    = useState('');
+  const [firstName,   setFirstName]   = useState('');
+  const [lastName,    setLastName]    = useState('');
   const [designation, setDesignation] = useState('');
   const [phone,       setPhone]       = useState('');
   const [email,       setEmail]       = useState('');
@@ -31,8 +32,18 @@ export default function AddEmployeeScreen(): React.ReactElement {
 
   const handleSubmit = () => {
     // Validation
-    if (!fullName.trim()) {
-      Alert.alert('Error', 'Please enter full name');
+    if (!firstName.trim()) {
+      Alert.alert('Error', 'Please enter first name');
+      return;
+    }
+
+    if (!lastName.trim()) {
+      Alert.alert('Error', 'Please enter last name');
+      return;
+    }
+
+    if (!email.trim()) {
+      Alert.alert('Error', 'Please enter email address');
       return;
     }
 
@@ -44,17 +55,16 @@ export default function AddEmployeeScreen(): React.ReactElement {
     // Submit to API
     createEmployee.mutate(
       {
-        name: fullName.trim(),
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim(),
         phone: phone.trim(),
-        email: email.trim() || undefined,
-        role: 'EMPLOYEE',
-        designation: designation.trim() || undefined,
       },
       {
         onSuccess: (result) => {
           Alert.alert(
             'Employee Created',
-            `Employee Code: ${result.tempCredential}\n\nShare this with the employee so they can log in.`,
+            `Employee: ${result.user.firstName} ${result.user.lastName}\nEmployee Code: ${result.user.employeeCode}\n\nAccount created with PENDING status. Activate the employee to generate their temporary password.`,
             [
               {
                 text: 'OK',
@@ -87,19 +97,28 @@ export default function AddEmployeeScreen(): React.ReactElement {
           <Card style={styles.section}>
             <Text style={styles.sectionLabel}>PERSONAL INFO</Text>
             <Input
-              label="Full Name *"
-              value={fullName}
-              onChangeText={setFullName}
-              placeholder="Enter full name"
+              label="First Name *"
+              value={firstName}
+              onChangeText={setFirstName}
+              placeholder="Enter first name"
               autoCapitalize="words"
               editable={!createEmployee.isPending}
             />
             <Input
-              label="Role / Designation"
-              value={designation}
-              onChangeText={setDesignation}
-              placeholder="e.g. Site Engineer"
+              label="Last Name *"
+              value={lastName}
+              onChangeText={setLastName}
+              placeholder="Enter last name"
               autoCapitalize="words"
+              editable={!createEmployee.isPending}
+            />
+            <Input
+              label="Email *"
+              value={email}
+              onChangeText={setEmail}
+              placeholder="Enter email address"
+              keyboardType="email-address"
+              autoCapitalize="none"
               editable={!createEmployee.isPending}
             />
             <Input
@@ -111,11 +130,11 @@ export default function AddEmployeeScreen(): React.ReactElement {
               editable={!createEmployee.isPending}
             />
             <Input
-              label="Email (Optional)"
-              value={email}
-              onChangeText={setEmail}
-              placeholder="Enter email address"
-              keyboardType="email-address"
+              label="Role / Designation"
+              value={designation}
+              onChangeText={setDesignation}
+              placeholder="e.g. Site Engineer"
+              autoCapitalize="words"
               editable={!createEmployee.isPending}
             />
           </Card>

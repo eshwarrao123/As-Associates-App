@@ -5,8 +5,8 @@ import * as SecureStore from 'expo-secure-store';
  * Secure storage is used for auth tokens to prevent extraction.
  */
 const STORAGE_KEYS = {
-  ACCESS_TOKEN: '@as_associates:access_token',
-  REFRESH_TOKEN: '@as_associates:refresh_token',
+  ACCESS_TOKEN: 'as_associates.access_token',
+  REFRESH_TOKEN: 'as_associates.refresh_token',
 } as const;
 
 /**

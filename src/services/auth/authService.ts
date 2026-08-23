@@ -75,9 +75,9 @@ export async function login(
   password: string,
 ): Promise<LoginResponse> {
   const response = await apiClient.post<LoginResponse>('/auth/login', {
-    employeeCode,
+    email: employeeCode,
     password,
-  } satisfies LoginRequest);
+  });
 
   return response.data;
 }

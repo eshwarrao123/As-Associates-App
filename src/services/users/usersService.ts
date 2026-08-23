@@ -70,19 +70,22 @@ export async function getUserById(id: string) {
 /**
  * Creates a new employee.
  * @param data - Employee creation data
- * @returns Created employee and temporary credential
+ * @returns Created employee (wrapped in { user })
  */
 export async function createEmployee(data: {
-  name: string;
-  phone: string;
-  email?: string;
-  role: 'EMPLOYEE' | 'ADMIN';
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  role?: 'EMPLOYEE' | 'ADMIN';
   designation?: string;
+  department?: string;
+  employeeCode?: string;
 }) {
   const response = await apiClient.post<{
-    data: { user: UserResponse; tempCredential: string };
+    user: UserResponse;
   }>('/users', data);
-  return response.data.data;
+  return response.data;
 }
 
 /**

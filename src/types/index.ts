@@ -1,6 +1,6 @@
 // ─── User & Auth Types ────────────────────────────────────────────────────────
 
-export type UserRole = 'employee' | 'admin';
+export type UserRole = 'EMPLOYEE' | 'ADMIN';
 
 export interface User {
   id: string;

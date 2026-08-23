@@ -68,7 +68,29 @@ apiClient.interceptors.response.use(
     };
 
     // If 401 and we haven't tried refreshing yet
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401) {
+      // Check if this is an auth endpoint — don't try to refresh for those
+      const requestUrl = originalRequest.url ?? '';
+      const isAuthEndpoint =
+        requestUrl.includes('/auth/login') ||
+        requestUrl.includes('/auth/refresh') ||
+        requestUrl.includes('/auth/logout');
+
+      if (isAuthEndpoint) {
+        // Don't try to refresh for auth endpoints — return original error
+        return Promise.reject(error);
+      }
+
+      // Already retried or is an auth endpoint — give up
+      if (originalRequest._retry) {
+        // Clear tokens and redirect only for non-auth endpoints
+        await clearTokens();
+        router.replace('/login');
+        return Promise.reject(
+          new ApiError(401, 'Session expired. Please log in again.'),
+        );
+      }
+
       // If already refreshing, queue this request
       if (isRefreshing) {
         return new Promise((resolve, reject) => {

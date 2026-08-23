@@ -89,7 +89,7 @@ function AuthGuard(): React.ReactElement | null {
             id: userData.id,
             name: `${userData.firstName} ${userData.lastName}`,
             email: userData.email,
-            role: userData.role.toLowerCase() as 'admin' | 'employee',
+            role: userData.role as 'admin' | 'employee',
             department: userData.department,
             avatarInitials: `${userData.firstName[0]}${userData.lastName[0]}`.toUpperCase(),
           };
@@ -109,10 +109,14 @@ function AuthGuard(): React.ReactElement | null {
 
   // Redirect when auth state changes — read segments from ref to avoid loop
   useEffect(() => {
+    console.log('AuthGuard:', { isAuthenticated, role, isHydrated, isCheckingAuth, segments: segmentsRef.current });
+
     if (!isHydrated) return;
+    if (isCheckingAuth) return;
     if (segmentsRef.current.length === 0) return;
 
     const inAuthGroup = segmentsRef.current[0] === '(auth)';
+    const normalizedRole = role?.toLowerCase();
 
     if (!isAuthenticated && !inAuthGroup) {
       router.replace('/(auth)/login');
@@ -123,9 +127,9 @@ function AuthGuard(): React.ReactElement | null {
         return;
       }
 
-      router.replace(role === 'admin' ? '/(admin)' : '/(employee)');
+      router.replace(normalizedRole === 'admin' ? '/(admin)' : '/(employee)');
     }
-  }, [isAuthenticated, isHydrated, role, router, user?.mustChangePassword]);
+  }, [isAuthenticated, isHydrated, isCheckingAuth, role, router, user?.mustChangePassword]);
 
   // Show spinner until hydration and auth check complete
   if (!isHydrated || isCheckingAuth) {
