@@ -18,7 +18,6 @@ export interface RequestResponse {
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   date?: string;
   reviewNote?: string;
-  reviewedBy?: string;
   reviewedAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -28,7 +27,7 @@ export interface RequestResponse {
     lastName: string;
     employeeCode: string;
   };
-  reviewer?: {
+  reviewedBy?: {
     id: string;
     firstName: string;
     lastName: string;
@@ -67,10 +66,10 @@ export async function getMyRequests() {
  * @returns Request detail
  */
 export async function getRequestById(id: string) {
-  const response = await apiClient.get<{ data: RequestResponse }>(
+  const response = await apiClient.get<RequestResponse>(
     `/requests/${id}`,
   );
-  return response.data.data;
+  return response.data;
 }
 
 /**
@@ -85,29 +84,23 @@ export async function getAllRequests(status?: string) {
 }
 
 /**
- * Approves a request (admin only).
+ * Updates a request status (admin only).
  * @param id - Request ID
+ * @param status - New status ('APPROVED' or 'REJECTED')
+ * @param reviewNote - Optional review note (e.g., rejection reason)
  * @returns Updated request
  */
-export async function approveRequest(id: string) {
-  const response = await apiClient.patch<{ data: RequestResponse }>(
-    `/requests/${id}/approve`,
-    {},
+export async function updateRequestStatus(
+  id: string,
+  status: 'APPROVED' | 'REJECTED',
+  reviewNote?: string,
+) {
+  const response = await apiClient.patch<RequestResponse>(
+    `/requests/${id}/status`,
+    {
+      status,
+      ...(reviewNote && { reviewNote }),
+    },
   );
-  return response.data.data;
-}
-
-/**
- * Rejects a request (admin only).
- * @param id - Request ID
- * @param reason - Optional rejection reason
- * @returns Updated request
- */
-export async function rejectRequest(id: string, reason?: string) {
-  const body = reason ? { reason } : {};
-  const response = await apiClient.patch<{ data: RequestResponse }>(
-    `/requests/${id}/reject`,
-    body,
-  );
-  return response.data.data;
+  return response.data;
 }

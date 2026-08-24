@@ -114,17 +114,16 @@ export async function updateEmployee(
  * Updates an employee's status.
  * @param id - User ID
  * @param status - New status
- * @returns Updated user
+ * @returns Updated user with optional tempCredential (when activating from PENDING)
  */
 export async function updateEmployeeStatus(
   id: string,
   status: 'ACTIVE' | 'DEACTIVATED',
-) {
-  const response = await apiClient.patch<{ data: UserResponse }>(
-    `/users/${id}/status`,
-    { status },
-  );
-  return response.data.data;
+): Promise<UserResponse & { tempCredential?: string; message?: string }> {
+  const response = await apiClient.patch<
+    UserResponse & { tempCredential?: string; message?: string }
+  >(`/users/${id}/status`, { status });
+  return response.data;
 }
 
 /**

@@ -30,12 +30,14 @@ const FILTERS: Filter[] = ['All', 'Ongoing', 'Completed', 'Upcoming'];
 // Map API status to filter status
 function mapApiStatusToFilter(status: string): ProjectStatus {
   switch (status) {
-    case 'ACTIVE':
+    case 'ONGOING':
       return 'ongoing';
     case 'COMPLETED':
       return 'completed';
     case 'ON_HOLD':
       return 'onhold';
+    case 'UPCOMING':
+      return 'onhold'; // Map UPCOMING to onhold for display
     default:
       return 'ongoing';
   }
@@ -87,7 +89,7 @@ export default function AdminProjectsScreen(): React.ReactElement {
     client: proj.clientName,
     city: proj.location,
     status: mapApiStatusToFilter(proj.status),
-    progress: proj.progressPercent,
+    progress: 0, // Backend does not return progressPercent yet
     engineers: [], // Will be populated from assignments API when needed
   })) ?? [];
 

@@ -134,6 +134,17 @@ export default function EmployeeDetailScreen(): React.ReactElement {
             updateStatus.mutate(
               { id: id ?? '', status: newStatus },
               {
+                onSuccess: (result) => {
+                  if (result.tempCredential) {
+                    Alert.alert(
+                      'Employee Activated',
+                      `Temporary Password: ${result.tempCredential}\n\nShare this with the employee so they can log in.`,
+                      [{ text: 'OK' }],
+                    );
+                  } else {
+                    Alert.alert('Success', 'Employee status updated.');
+                  }
+                },
                 onError: (error) => {
                   Alert.alert('Error', getErrorMessage(error));
                 },

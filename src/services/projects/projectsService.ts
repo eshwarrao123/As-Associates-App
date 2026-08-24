@@ -12,8 +12,7 @@ interface ProjectResponse {
   description?: string;
   startDate: string; // YYYY-MM-DD
   endDate?: string; // YYYY-MM-DD
-  status: 'ACTIVE' | 'COMPLETED' | 'ON_HOLD';
-  progressPercent: number;
+  status: 'ONGOING' | 'COMPLETED' | 'UPCOMING' | 'ON_HOLD';
 }
 
 interface ProjectDetailResponse extends ProjectResponse {
@@ -33,10 +32,12 @@ interface ProjectDetailResponse extends ProjectResponse {
  */
 function mapStatusToBadgeVariant(status: string): BadgeVariant {
   switch (status) {
-    case 'ACTIVE':
+    case 'ONGOING':
       return 'ongoing';
     case 'COMPLETED':
       return 'completed';
+    case 'UPCOMING':
+      return 'upcoming';
     case 'ON_HOLD':
       return 'onhold';
     default:
@@ -54,7 +55,7 @@ function mapProjectResponse(project: ProjectResponse) {
     client: project.clientName,
     location: project.location,
     status: mapStatusToBadgeVariant(project.status),
-    progress: project.progressPercent,
+    progress: 0, // Backend does not return progressPercent yet
     startDate: project.startDate,
     endDate: project.endDate ?? '',
   };
@@ -96,7 +97,7 @@ export async function getProjectById(id: string) {
     scope: project.description ?? 'No description provided.',
     startDate: project.startDate,
     targetEnd: project.endDate ?? 'Not set',
-    progress: project.progressPercent,
+    progress: 0, // Backend does not return progressPercent yet
     team: project.team ?? [],
   };
 }

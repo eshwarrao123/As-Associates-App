@@ -7,7 +7,7 @@ import { Card } from '../../../src/components/ui/Card';
 import { Icon } from '../../../src/components/ui/Icon';
 import { Button } from '../../../src/components/ui/Button';
 import { AdminBottomNav } from '../../../src/components/ui/AdminBottomNav';
-import { useAdminRequest, useApproveRequest, useRejectRequest } from '../../../src/hooks/useAdminRequests';
+import { useAdminRequest, useUpdateRequestStatus } from '../../../src/hooks/useAdminRequests';
 import { getErrorMessage } from '../../../src/services/api/errorHandler';
 import {
   BorderRadius,
@@ -60,22 +60,24 @@ export default function RequestDetailScreen(): React.ReactElement {
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const { data: request, isLoading, error } = useAdminRequest(id ?? '');
-  const approveRequest = useApproveRequest();
-  const rejectRequest = useRejectRequest();
+  const updateRequestStatus = useUpdateRequestStatus();
 
   const handleApprove = () => {
     if (!request) return;
 
-    approveRequest.mutate(request.id, {
-      onSuccess: () => {
-        Alert.alert('Success', 'Request approved', [
-          { text: 'OK', onPress: () => router.back() },
-        ]);
+    updateRequestStatus.mutate(
+      { id: request.id, status: 'APPROVED' },
+      {
+        onSuccess: () => {
+          Alert.alert('Success', 'Request approved', [
+            { text: 'OK', onPress: () => router.back() },
+          ]);
+        },
+        onError: (err) => {
+          Alert.alert('Error', getErrorMessage(err));
+        },
       },
-      onError: (err) => {
-        Alert.alert('Error', getErrorMessage(err));
-      },
-    });
+    );
   };
 
   const handleReject = () => {
@@ -90,9 +92,9 @@ export default function RequestDetailScreen(): React.ReactElement {
           {
             text: 'Reject',
             style: 'destructive',
-            onPress: (reason) => {
-              rejectRequest.mutate(
-                { id: request.id, reason },
+            onPress: (reviewNote) => {
+              updateRequestStatus.mutate(
+                { id: request.id, status: 'REJECTED', reviewNote },
                 {
                   onSuccess: () => {
                     Alert.alert('Success', 'Request rejected', [
@@ -116,8 +118,8 @@ export default function RequestDetailScreen(): React.ReactElement {
           text: 'Reject',
           style: 'destructive',
           onPress: () => {
-            rejectRequest.mutate(
-              { id: request.id },
+            updateRequestStatus.mutate(
+              { id: request.id, status: 'REJECTED' },
               {
                 onSuccess: () => {
                   Alert.alert('Success', 'Request rejected', [
@@ -183,7 +185,7 @@ export default function RequestDetailScreen(): React.ReactElement {
   const userCode = request.user?.employeeCode || 'N/A';
   const badgeVariant = mapStatusToBadge(request.status);
   const isPending = request.status === 'PENDING';
-  const isProcessing = approveRequest.isPending || rejectRequest.isPending;
+  const isProcessing = updateRequestStatus.isPending;
 
   return (
     <>
@@ -227,9 +229,7 @@ export default function RequestDetailScreen(): React.ReactElement {
                 <View style={styles.metaRow}>
                   <Text style={styles.metaLabel}>Reviewed by</Text>
                   <Text style={styles.metaValue}>
-                    {request.reviewer
-                      ? `${request.reviewer.firstName} ${request.reviewer.lastName}`
-                      : 'Admin'}
+                    {`${request.reviewedBy.firstName} ${request.reviewedBy.lastName}`}
                   </Text>
                 </View>
               )}
@@ -266,7 +266,7 @@ export default function RequestDetailScreen(): React.ReactElement {
                   disabled={isProcessing}
                 >
                   <Text style={styles.approveText}>
-                    {approveRequest.isPending ? 'Approving...' : '✓ Approve'}
+                    {updateRequestStatus.isPending ? 'Approving...' : '✓ Approve'}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -276,7 +276,7 @@ export default function RequestDetailScreen(): React.ReactElement {
                   disabled={isProcessing}
                 >
                   <Text style={styles.rejectText}>
-                    {rejectRequest.isPending ? 'Rejecting...' : '✕ Reject'}
+                    {updateRequestStatus.isPending ? 'Rejecting...' : '✕ Reject'}
                   </Text>
                 </TouchableOpacity>
               </View>

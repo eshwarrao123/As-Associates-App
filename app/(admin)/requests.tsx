@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Badge } from '../../src/components/ui/Badge';
 import { Card } from '../../src/components/ui/Card';
 import { AdminBottomNav } from '../../src/components/ui/AdminBottomNav';
-import { useAllRequests, useApproveRequest, useRejectRequest } from '../../src/hooks/useAdminRequests';
+import { useAllRequests, useUpdateRequestStatus } from '../../src/hooks/useAdminRequests';
 import { getErrorMessage } from '../../src/services/api/errorHandler';
 import {
   BorderRadius,
@@ -68,15 +68,17 @@ export default function AdminRequestsScreen(): React.ReactElement {
 
   const apiStatus = FILTER_TO_API_STATUS[filter];
   const { data: requests, isLoading, refetch } = useAllRequests(apiStatus);
-  const approveRequest = useApproveRequest();
-  const rejectRequest = useRejectRequest();
+  const updateRequestStatus = useUpdateRequestStatus();
 
   const handleApprove = (id: string) => {
-    approveRequest.mutate(id, {
-      onError: (err) => {
-        Alert.alert('Error', getErrorMessage(err));
+    updateRequestStatus.mutate(
+      { id, status: 'APPROVED' },
+      {
+        onError: (err) => {
+          Alert.alert('Error', getErrorMessage(err));
+        },
       },
-    });
+    );
   };
 
   const handleReject = (id: string) => {
@@ -86,8 +88,8 @@ export default function AdminRequestsScreen(): React.ReactElement {
         text: 'Reject',
         style: 'destructive',
         onPress: () => {
-          rejectRequest.mutate(
-            { id },
+          updateRequestStatus.mutate(
+            { id, status: 'REJECTED' },
             {
               onError: (err) => {
                 Alert.alert('Error', getErrorMessage(err));
@@ -178,7 +180,7 @@ export default function AdminRequestsScreen(): React.ReactElement {
                       activeOpacity={0.85}
                       style={[styles.actionBtn, styles.approveBtn]}
                       onPress={() => handleApprove(item.id)}
-                      disabled={approveRequest.isPending || rejectRequest.isPending}
+                      disabled={updateRequestStatus.isPending}
                     >
                       <Text style={styles.approveText}>✓ Approve</Text>
                     </TouchableOpacity>
@@ -186,7 +188,7 @@ export default function AdminRequestsScreen(): React.ReactElement {
                       activeOpacity={0.85}
                       style={[styles.actionBtn, styles.rejectBtn]}
                       onPress={() => handleReject(item.id)}
-                      disabled={approveRequest.isPending || rejectRequest.isPending}
+                      disabled={updateRequestStatus.isPending}
                     >
                       <Text style={styles.rejectText}>✕ Reject</Text>
                     </TouchableOpacity>

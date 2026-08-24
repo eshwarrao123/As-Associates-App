@@ -24,29 +24,21 @@ export function useAdminRequest(id: string) {
 }
 
 /**
- * Hook to approve a request.
+ * Hook to update a request status (approve or reject).
  */
-export function useApproveRequest() {
+export function useUpdateRequestStatus() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: requestsService.approveRequest,
-    onSuccess: (data, id) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.requests.admin() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.requests.detail(id) });
-    },
-  });
-}
-
-/**
- * Hook to reject a request.
- */
-export function useRejectRequest() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ id, reason }: { id: string; reason?: string }) =>
-      requestsService.rejectRequest(id, reason),
+    mutationFn: ({
+      id,
+      status,
+      reviewNote,
+    }: {
+      id: string;
+      status: 'APPROVED' | 'REJECTED';
+      reviewNote?: string;
+    }) => requestsService.updateRequestStatus(id, status, reviewNote),
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.requests.admin() });
       queryClient.invalidateQueries({
