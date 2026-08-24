@@ -4,9 +4,9 @@ import apiClient from '../api/client';
 
 export interface CreateProgressLogData {
   projectId: string;
+  title: string;
   description: string;
-  hoursWorked: number;
-  date: string; // ISO date string: "2026-08-22"
+  workStage?: string;
 }
 
 // ─── Response Types ───────────────────────────────────────────────────────────
@@ -15,15 +15,14 @@ export interface ProgressLogResponse {
   id: string;
   projectId: string;
   userId: string;
+  title: string;
   description: string;
-  hoursWorked: number;
+  workStage?: string;
   date: string;
   createdAt: string;
-  updatedAt: string;
   project?: {
     id: string;
     name: string;
-    clientName: string;
   };
   user?: {
     id: string;
@@ -40,19 +39,19 @@ export interface ProgressLogResponse {
  * @returns The created progress log
  */
 export async function createProgressLog(data: CreateProgressLogData) {
-  const response = await apiClient.post<{ data: ProgressLogResponse }>(
+  const response = await apiClient.post<ProgressLogResponse>(
     '/progress-logs',
     data,
   );
-  return response.data.data;
+  return response.data;
 }
 
 /**
  * Fetches all progress logs for the current employee.
- * @returns Array of progress logs
+ * @returns Array of progress logs with pagination metadata
  */
 export async function getMyProgressLogs() {
-  const response = await apiClient.get<{ data: ProgressLogResponse[] }>(
+  const response = await apiClient.get<{ data: ProgressLogResponse[]; meta: unknown }>(
     '/progress-logs/my',
   );
   return response.data.data;

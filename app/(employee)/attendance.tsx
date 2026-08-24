@@ -4,6 +4,7 @@ import { Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../src/store/auth.store';
 import { useAttendanceCalendar, useCheckIn } from '../../src/hooks/useAttendance';
+import { useMyProjects } from '../../src/hooks/useMyProjects';
 import { getErrorMessage } from '../../src/services/api/errorHandler';
 import { Avatar } from '../../src/components/ui/Avatar';
 import { Card } from '../../src/components/ui/Card';
@@ -74,6 +75,7 @@ export default function AttendanceScreen(): React.ReactElement {
   const [currentYear, setCurrentYear] = useState(now.getFullYear());
 
   const { data: attendanceData, isLoading } = useAttendanceCalendar(currentMonth, currentYear);
+  const { data: projects } = useMyProjects();
   const checkInMutation = useCheckIn();
 
   // Build attendance map by date
@@ -106,7 +108,15 @@ export default function AttendanceScreen(): React.ReactElement {
   ];
 
   const handleCheckIn = () => {
-    checkInMutation.mutate(undefined, {
+    // Use the first project as default - in a real app, user might select project
+    const defaultProjectId = projects?.[0]?.id;
+
+    if (!defaultProjectId) {
+      Alert.alert('Error', 'No projects assigned. Please contact your admin.');
+      return;
+    }
+
+    checkInMutation.mutate(defaultProjectId, {
       onError: (error) => {
         const message = getErrorMessage(error);
         Alert.alert('Error', message);

@@ -22,7 +22,7 @@ export function useCheckIn() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: attendanceService.checkIn,
+    mutationFn: (projectId: string) => attendanceService.checkIn(projectId),
     onSuccess: () => {
       const now = new Date();
       const month = now.getMonth() + 1;

@@ -4,20 +4,27 @@ import apiClient from '../api/client';
 
 interface CheckInResponse {
   id: string;
+  userId: string;
+  date: string;
   checkInTime: string; // ISO 8601
-  status: 'PRESENT' | 'LATE';
+  checkOutTime: string | null;
+  status: 'PRESENT' | 'ABSENT' | 'HALF_DAY';
+  createdAt: string;
 }
 
 interface CheckOutResponse {
   id: string;
+  userId: string;
+  date: string;
   checkInTime: string;
   checkOutTime: string;
-  status: 'PRESENT' | 'LATE';
+  status: 'PRESENT' | 'ABSENT' | 'HALF_DAY';
+  createdAt: string;
 }
 
 interface AttendanceRecord {
   date: string; // YYYY-MM-DD
-  status: 'PRESENT' | 'ABSENT' | 'LATE' | 'HALF_DAY' | 'LEAVE';
+  status: 'PRESENT' | 'ABSENT' | 'HALF_DAY';
   checkInTime?: string;
   checkOutTime?: string;
 }
@@ -36,12 +43,13 @@ interface AttendanceCalendarResponse {
 
 /**
  * Mark attendance check-in for today.
+ * @param projectId - ID of the project to clock in for
  * @returns Check-in details with ID, time, and status
  */
-export async function checkIn(): Promise<CheckInResponse> {
+export async function checkIn(projectId: string): Promise<CheckInResponse> {
   const response = await apiClient.post<CheckInResponse>(
     '/attendance/check-in',
-    {},
+    { projectId },
   );
   return response.data;
 }
@@ -105,7 +113,7 @@ export interface AdminAttendanceRecord {
   id: string;
   userId: string;
   date: string;
-  status: 'PRESENT' | 'ABSENT' | 'LATE' | 'HALF_DAY' | 'LEAVE';
+  status: 'PRESENT' | 'ABSENT' | 'HALF_DAY';
   checkInTime?: string;
   checkOutTime?: string;
   user?: {

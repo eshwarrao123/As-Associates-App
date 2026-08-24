@@ -3,9 +3,11 @@ import apiClient from '../api/client';
 // ─── Request Types ────────────────────────────────────────────────────────────
 
 export interface CreateRequestData {
-  type: string; // e.g. 'MATERIAL', 'ISSUE', 'LEAVE', 'ADVANCE', 'OTHER'
+  projectId: string;
+  type: 'MATERIAL' | 'ISSUE';
+  priority?: 'LOW' | 'MEDIUM' | 'HIGH';
+  subject: string;
   description: string;
-  date?: string; // optional ISO date string
 }
 
 // ─── Response Types ───────────────────────────────────────────────────────────
@@ -13,10 +15,12 @@ export interface CreateRequestData {
 export interface RequestResponse {
   id: string;
   userId: string;
+  projectId: string;
   type: string;
+  priority: string;
+  subject: string;
   description: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
-  date?: string;
   reviewNote?: string;
   reviewedAt?: string;
   createdAt: string;
@@ -42,19 +46,19 @@ export interface RequestResponse {
  * @returns The created request
  */
 export async function createRequest(data: CreateRequestData) {
-  const response = await apiClient.post<{ data: RequestResponse }>(
+  const response = await apiClient.post<RequestResponse>(
     '/requests',
     data,
   );
-  return response.data.data;
+  return response.data;
 }
 
 /**
  * Fetches all requests for the current employee.
- * @returns Array of requests
+ * @returns Array of requests with pagination metadata
  */
 export async function getMyRequests() {
-  const response = await apiClient.get<{ data: RequestResponse[] }>(
+  const response = await apiClient.get<{ data: RequestResponse[]; meta: unknown }>(
     '/requests/my',
   );
   return response.data.data;

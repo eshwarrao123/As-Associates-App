@@ -53,9 +53,9 @@ export default function ProgressScreen(): React.ReactElement {
 
   // Form state
   const [projectId, setProjectId] = useState<string | null>(null);
+  const [title, setTitle] = useState('');
   const [stage, setStage] = useState('Foundation');
   const [workDone, setWorkDone] = useState('');
-  const [hoursWorked, setHoursWorked] = useState(8);
 
   // Set default project when projects load
   React.useEffect(() => {
@@ -89,33 +89,30 @@ export default function ProgressScreen(): React.ReactElement {
       return;
     }
 
+    if (!title.trim()) {
+      Alert.alert('Error', 'Please enter a title');
+      return;
+    }
+
     if (!workDone.trim()) {
       Alert.alert('Error', 'Please describe the work done');
       return;
     }
 
-    if (hoursWorked <= 0) {
-      Alert.alert('Error', 'Hours worked must be greater than 0');
-      return;
-    }
-
-    // Combine stage and work description
-    const description = `${stage}: ${workDone}`;
-
     createProgressLog.mutate(
       {
         projectId,
-        description,
-        hoursWorked,
-        date: todayDate,
+        title,
+        description: workDone,
+        workStage: stage,
       },
       {
         onSuccess: () => {
           Alert.alert('Success', 'Progress log submitted!');
           // Reset form
+          setTitle('');
           setWorkDone('');
           setStage('Foundation');
-          setHoursWorked(8);
         },
         onError: (error) => {
           Alert.alert('Error', getErrorMessage(error));
@@ -192,9 +189,22 @@ export default function ProgressScreen(): React.ReactElement {
               )}
             </View>
 
+            {/* Title */}
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Title</Text>
+              <TextInput
+                style={styles.inputBox}
+                value={title}
+                onChangeText={setTitle}
+                placeholder="Brief summary of today's work..."
+                placeholderTextColor={Colors.textMuted}
+                editable={!createProgressLog.isPending}
+              />
+            </View>
+
             {/* Work Stage */}
             <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Work Stage</Text>
+              <Text style={styles.fieldLabel}>Work Stage (Optional)</Text>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -225,9 +235,9 @@ export default function ProgressScreen(): React.ReactElement {
               </ScrollView>
             </View>
 
-            {/* Work Done */}
+            {/* Description */}
             <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Work Done</Text>
+              <Text style={styles.fieldLabel}>Description</Text>
               <TextInput
                 style={styles.textArea}
                 value={workDone}
@@ -238,35 +248,6 @@ export default function ProgressScreen(): React.ReactElement {
                 textAlignVertical="top"
                 editable={!createProgressLog.isPending}
               />
-            </View>
-
-            {/* Hours Worked */}
-            <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Hours Worked</Text>
-              <View style={styles.stepperRow}>
-                <View style={styles.stepper}>
-                  <TouchableOpacity
-                    style={styles.stepBtn}
-                    onPress={() => setHoursWorked((prev) => Math.max(0.5, prev - 0.5))}
-                    disabled={createProgressLog.isPending}
-                  >
-                    <Text style={styles.stepBtnText}>−</Text>
-                  </TouchableOpacity>
-                  <View style={styles.stepDivider} />
-                  <View style={styles.stepValueBox}>
-                    <Text style={styles.hoursValue}>{hoursWorked}</Text>
-                  </View>
-                  <View style={styles.stepDivider} />
-                  <TouchableOpacity
-                    style={styles.stepBtn}
-                    onPress={() => setHoursWorked((prev) => Math.min(24, prev + 0.5))}
-                    disabled={createProgressLog.isPending}
-                  >
-                    <Text style={styles.stepBtnText}>+</Text>
-                  </TouchableOpacity>
-                </View>
-                <Text style={styles.hoursSuffix}>hours</Text>
-              </View>
             </View>
           </Card>
 
@@ -357,15 +338,15 @@ const styles = StyleSheet.create({
 
   // Filled input treatment — background-tinted fill on the white card
   inputBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     height: InputHeight,
     paddingHorizontal: 14,
     borderWidth: 1,
     borderColor: Colors.border,
     borderRadius: BorderRadius.btn,
     backgroundColor: Colors.background,
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.md,
+    color: Colors.textPrimary,
   },
   inputValue: {
     fontFamily: FontFamily.regular,
@@ -400,7 +381,7 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
 
-  // ── Work done ───────────────────────────────────────────────────────────────
+  // ── Description textarea ────────────────────────────────────────────────────
   textArea: {
     height: 96,
     borderWidth: 1,
@@ -411,51 +392,6 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.regular,
     fontSize: FontSize.md,
     color: Colors.textPrimary,
-  },
-
-  // ── Hours stepper ───────────────────────────────────────────────────────────
-  stepperRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3] },
-  stepper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: InputHeight,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: BorderRadius.btn,
-    backgroundColor: Colors.background,
-    overflow: 'hidden',
-  },
-  stepBtn: {
-    width: 48,
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepBtnText: {
-    fontFamily: FontFamily.medium,
-    fontSize: FontSize.xl,
-    lineHeight: 24,
-    color: Colors.textSecondary,
-  },
-  stepDivider: {
-    width: 1,
-    height: '100%',
-    backgroundColor: Colors.border,
-  },
-  stepValueBox: {
-    width: 62,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  hoursValue: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.md,
-    color: Colors.textPrimary,
-  },
-  hoursSuffix: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.md,
-    color: Colors.textMuted,
   },
 
   // ── Save button — accent primary, with leading icon ──────────────────────────

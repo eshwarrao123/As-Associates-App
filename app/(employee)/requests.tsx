@@ -116,6 +116,11 @@ export default function RequestsScreen(): React.ReactElement {
 
   // Handle form submission
   const handleSubmit = () => {
+    if (!projectId) {
+      Alert.alert('Error', 'Please select a project');
+      return;
+    }
+
     if (!subject.trim()) {
       Alert.alert('Error', 'Please enter a subject');
       return;
@@ -126,15 +131,19 @@ export default function RequestsScreen(): React.ReactElement {
       return;
     }
 
-    // Build description with subject, priority, and details
+    // Map UI type to API type
     const apiType = REQUEST_TYPE_MAP[type];
-    const fullDescription = `${subject}\n\nPriority: ${priority}\n\n${description}`;
+
+    // Map UI priority to API priority
+    const apiPriority = priority.toUpperCase() as 'LOW' | 'MEDIUM' | 'HIGH';
 
     createRequest.mutate(
       {
-        type: apiType,
-        description: fullDescription,
-        date: new Date().toISOString().split('T')[0],
+        projectId,
+        type: apiType as 'MATERIAL' | 'ISSUE',
+        priority: apiPriority,
+        subject,
+        description,
       },
       {
         onSuccess: () => {
@@ -212,7 +221,7 @@ export default function RequestsScreen(): React.ReactElement {
           <Card style={styles.section}>
             <Text style={styles.sectionLabel}>REQUEST DETAILS</Text>
             <View>
-              <Text style={styles.fieldLabel}>Select Project (Optional)</Text>
+              <Text style={styles.fieldLabel}>Select Project *</Text>
               {isLoadingProjects ? (
                 <View style={[styles.dropdownPlaceholder]}>
                   <ActivityIndicator size="small" color={Colors.primary} />
@@ -234,14 +243,14 @@ export default function RequestsScreen(): React.ReactElement {
               )}
             </View>
             <Input
-              label="Subject"
+              label="Subject *"
               placeholder="Brief summary of your request"
               value={subject}
               onChangeText={setSubject}
               editable={!createRequest.isPending}
             />
             <View>
-              <Text style={styles.fieldLabel}>Description</Text>
+              <Text style={styles.fieldLabel}>Description *</Text>
               <TextInput
                 style={styles.textArea}
                 value={description}
