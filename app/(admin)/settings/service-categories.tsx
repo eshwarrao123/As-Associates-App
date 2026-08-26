@@ -71,7 +71,9 @@ export default function ServiceCategoriesScreen(): React.ReactElement {
             <TouchableOpacity
               activeOpacity={0.85}
               style={styles.addBtn}
-              onPress={() => console.log('Add category pressed')}
+              onPress={() => {
+                // Placeholder: Add category UI not implemented yet
+              }}
             >
               <Text style={styles.addBtnText}>+ Add Category</Text>
             </TouchableOpacity>

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useQueryClient } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 import { Avatar } from '../../src/components/ui/Avatar';
 import { Card } from '../../src/components/ui/Card';
@@ -10,6 +11,7 @@ import { Icon, type IconName } from '../../src/components/ui/Icon';
 import { BottomNav } from '../../src/components/ui/BottomNav';
 import { useAuthStore } from '../../src/store/auth.store';
 import { useMe } from '../../src/hooks/useMe';
+import { queryKeys } from '../../src/services/api/queryKeys';
 import { Colors, FontFamily, FontSize, Spacing, BorderRadius, withAlpha } from '../../src/constants/tokens';
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
@@ -57,11 +59,19 @@ const LinkRow: React.FC<Row & { value?: string; onPress?: () => void }> = ({
 
 export default function ProfileScreen(): React.ReactElement {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const { data: meData, isLoading: meLoading } = useMe();
   const storeUser = useAuthStore((state) => state.user);
+
+  // Invalidate auth.me query if cached user doesn't match store user
+  useEffect(() => {
+    if (meData && storeUser && meData.id !== storeUser.id) {
+      queryClient.invalidateQueries({ queryKey: queryKeys.auth.me });
+    }
+  }, [meData?.id, storeUser?.id, queryClient]);
 
   // ALWAYS prioritize meData (fresh API data) over storeUser (cached data)
   const displayUser = meData ?? storeUser;
@@ -110,6 +120,8 @@ export default function ProfileScreen(): React.ReactElement {
         onPress: async () => {
           setIsLoggingOut(true);
           try {
+            // Clear all cached query data before logout
+            queryClient.clear();
             await useAuthStore.getState().logoutAction();
             router.replace('/(auth)/login');
           } catch {

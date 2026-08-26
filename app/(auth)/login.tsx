@@ -47,18 +47,15 @@ export default function LoginScreen(): React.ReactElement {
   });
 
   const onSubmit = async (data: LoginFormData): Promise<void> => {
-    console.log('login: calling loginAction', { employeeCode: data.employeeCode });
     setIsLoading(true);
     setError(null);
 
     try {
       await loginAction(data.employeeCode, data.password);
-      console.log('login: loginAction done');
 
       // Navigation is handled by AuthGuard in _layout.tsx
       // which watches isAuthenticated and role changes
     } catch (err) {
-      console.log('login: caught error', { err });
       const apiError = parseApiError(err);
 
       // Map specific status codes to user-friendly messages

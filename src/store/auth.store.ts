@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User, UserRole } from '../types';
 import * as authService from '../services/auth/authService';
 import * as tokenStore from '../services/api/tokenStore';
+import { queryClient } from '../services/api/queryClient';
 
 // ─── State Shape ──────────────────────────────────────────────────────────────
 
@@ -98,7 +99,6 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
 
   // ─── loginAction: authenticate user via API ────────────────────────────────
   loginAction: async (employeeCode: string, password: string) => {
-    console.log('loginAction: calling API', { employeeCode });
     set({ isLoading: true, error: null });
 
     try {
@@ -108,17 +108,17 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
         AsyncStorage.removeItem(STORAGE_KEYS.USER),
         tokenStore.clearTokens(),
       ]);
-      console.log('loginAction: cleared old data');
+
+      // Clear query cache before starting new session
+      queryClient.clear();
 
       const response = await authService.login(employeeCode, password);
-      console.log('loginAction: API success', { response });
 
       // Store tokens in secure storage
       await Promise.all([
         tokenStore.setAccessToken(response.accessToken),
         tokenStore.setRefreshToken(response.refreshToken),
       ]);
-      console.log('loginAction: tokens stored');
 
       // Map API user shape to local User type
       const user: User = {
@@ -130,11 +130,9 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
         avatarInitials: `${response.user.firstName[0]}${response.user.lastName[0]}`.toUpperCase(),
         mustChangePassword: response.user.mustChangePassword ?? false,
       };
-      console.log('loginAction: user mapped', { user });
 
       // Persist user to AsyncStorage for hydration
       await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
-      console.log('loginAction: user persisted to AsyncStorage');
 
       set({
         user,
@@ -144,13 +142,7 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
         isLoading: false,
         error: null,
       });
-      console.log('loginAction: store updated', {
-        isAuthenticated: true,
-        role: user.role,
-        userName: user.name,
-      });
     } catch (error) {
-      console.log('loginAction: error caught', { error });
       const errorMessage =
         error instanceof Error ? error.message : 'An error occurred';
 
@@ -172,6 +164,9 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
     if (refreshToken) {
       void authService.logout(refreshToken);
     }
+
+    // Clear ALL TanStack Query cache
+    queryClient.clear();
 
     // Clear tokens from secure storage
     await tokenStore.clearTokens();

@@ -16,10 +16,15 @@ interface ProjectResponse {
 }
 
 interface ProjectDetailResponse extends ProjectResponse {
-  team?: Array<{
+  assignments?: Array<{
     id: string;
-    firstName: string;
-    lastName: string;
+    createdAt: string;
+    user: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      employeeCode?: string;
+    };
   }>;
   recentProgressLogs?: unknown[];
   recentUploads?: unknown[];
@@ -73,8 +78,6 @@ export async function getMyProjects() {
     '/projects',
   );
 
-  console.log('getMyProjects response:', JSON.stringify(response.data));
-
   // Backend returns { data: [...], meta: {...} }
   // So we access response.data.data (the array)
   return response.data.data.map(mapProjectResponse);
@@ -102,7 +105,7 @@ export async function getProjectById(id: string) {
     startDate: project.startDate,
     targetEnd: project.endDate ?? 'Not set',
     progress: 0, // Backend does not return progressPercent yet
-    team: project.team ?? [],
+    team: project.assignments?.map((a) => a.user) ?? [],
   };
 }
 

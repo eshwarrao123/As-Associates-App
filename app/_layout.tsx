@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Slot, useRouter, useSegments } from 'expo-router';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
   useFonts,
@@ -16,18 +16,7 @@ import { getAccessToken } from '../src/services/api/tokenStore';
 import { getMe } from '../src/services/auth/authService';
 import { clearTokens } from '../src/services/api/tokenStore';
 import ErrorBoundary from '../src/components/ErrorBoundary';
-
-// ─── TanStack Query client ────────────────────────────────────────────────────
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      retry: 1,
-      retryDelay: 1000,
-    },
-  },
-});
+import { queryClient } from '../src/services/api/queryClient';
 
 // ─── Loading screen ───────────────────────────────────────────────────────────
 
@@ -109,8 +98,6 @@ function AuthGuard(): React.ReactElement | null {
 
   // Redirect when auth state changes — read segments from ref to avoid loop
   useEffect(() => {
-    console.log('AuthGuard:', { isAuthenticated, role, isHydrated, isCheckingAuth, segments: segmentsRef.current });
-
     if (!isHydrated) return;
     if (isCheckingAuth) return;
     if (segmentsRef.current.length === 0) return;

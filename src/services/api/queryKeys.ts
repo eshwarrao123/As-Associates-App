@@ -14,6 +14,7 @@ export const queryKeys = {
   users: {
     all: (page: number = 1) => ['users', 'list', page] as const,
     detail: (id: string) => ['users', 'detail', id] as const,
+    employeeProjects: (id: string) => ['users', 'projects', id] as const,
   },
   projects: {
     all: (page: number = 1) => ['projects', 'list', page] as const,

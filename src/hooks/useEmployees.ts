@@ -28,7 +28,7 @@ export function useEmployee(id: string) {
  */
 export function useEmployeeProjects(id: string) {
   return useQuery({
-    queryKey: ['users', 'projects', id],
+    queryKey: queryKeys.users.employeeProjects(id),
     queryFn: () => usersService.getEmployeeProjects(id),
     enabled: !!id,
   });

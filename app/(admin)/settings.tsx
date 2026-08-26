@@ -184,7 +184,6 @@ export default function SettingsScreen(): React.ReactElement {
                 <Button
                   label="Save"
                   onPress={() => {
-                    console.log('Company profile saved:', { companyName, regNumber, address });
                     setShowCompanyEdit(false);
                   }}
                   style={styles.expandSaveBtn}

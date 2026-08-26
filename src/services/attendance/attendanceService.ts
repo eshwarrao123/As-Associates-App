@@ -60,7 +60,7 @@ export async function checkIn(projectId: string): Promise<CheckInResponse> {
  */
 export async function checkOut(): Promise<CheckOutResponse> {
   const response = await apiClient.post<CheckOutResponse>(
-    '/attendance/check-out',
+    '/attendance/clock-out',
     {},
   );
   return response.data;

@@ -103,6 +103,16 @@ export function useAssignEmployees() {
       queryClient.invalidateQueries({
         queryKey: queryKeys.projects.assignments(variables.projectId),
       });
+      // Invalidate each employee's project list
+      variables.employeeIds.forEach((employeeId) => {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.users.employeeProjects(employeeId),
+        });
+      });
+      // Also invalidate the employee's own "my projects" query
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.projects.my,
+      });
     },
   });
 }
@@ -124,6 +134,14 @@ export function useUnassignEmployee() {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({
         queryKey: queryKeys.projects.assignments(variables.projectId),
+      });
+      // Invalidate the employee's project list
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.users.employeeProjects(variables.employeeId),
+      });
+      // Also invalidate the employee's own "my projects" query
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.projects.my,
       });
     },
   });
