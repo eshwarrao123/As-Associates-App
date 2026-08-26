@@ -17,9 +17,10 @@ import {
 import type { BadgeVariant } from '../../src/types';
 import { useEmployeeCount, useProjectCount } from '../../src/hooks/useAdminDashboard';
 import { useAllRequests, useUpdateRequestStatus } from '../../src/hooks/useAdminRequests';
+import { useAllProjects } from '../../src/hooks/useAdminProjects';
 import { getErrorMessage } from '../../src/services/api/errorHandler';
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
+// ─── Type Definitions ─────────────────────────────────────────────────────────
 
 interface Kpi {
   value: string | number;
@@ -35,116 +36,16 @@ interface Kpi {
   isLoading?: boolean;
 }
 
-// Mock data for KPIs that aren't connected to API yet
-const ONGOING_PROJECTS_COUNT = '11';
-const PENDING_REQUESTS_COUNT = '6';
-
 interface StatusProject {
   id: string;
   name: string;
   client: string;
   progress: number;
-  /** Subtitle in "Category • Phase" format per Stitch */
+  /** Subtitle showing location and status */
   subtitle: string;
   /** Progress bar fill colour — alternates navy/amber per Stitch */
   barColor: string;
 }
-
-const STATUS_PROJECTS: StatusProject[] = [
-  {
-    id: '1',
-    name: 'City Center Plaza',
-    client: 'ICICI Bank',
-    progress: 75,
-    subtitle: 'Commercial • Phase 2',
-    barColor: Colors.primary,
-  },
-  {
-    id: '2',
-    name: 'Riverside Apartments',
-    client: 'Axis Bank',
-    progress: 30,
-    subtitle: 'Residential • Foundation',
-    barColor: Colors.accent,
-  },
-  {
-    id: '3',
-    name: 'Tech Park Hub',
-    client: 'HDFC Bank',
-    progress: 92,
-    subtitle: 'Industrial • Final Fit-out',
-    barColor: Colors.primary,
-  },
-];
-
-interface Activity {
-  id: string;
-  initials: string;
-  text: string;
-  time: string;
-  /** Bullet dot colour per Stitch timeline */
-  dotColor: string;
-}
-
-const ACTIVITIES: Activity[] = [
-  { id: 'a1', initials: 'SJ', text: 'Sarah Jenkins uploaded new site photos for City Center Plaza.', time: '10:45 AM • Today', dotColor: Colors.primary },
-  { id: 'a2', initials: 'MR', text: 'Mike Ross marked foundation stage complete on Riverside Apartments.', time: '09:15 AM • Today', dotColor: Colors.accent },
-  { id: 'a3', initials: 'VP', text: 'Material delivery delayed for Tech Park Hub.', time: 'Yesterday', dotColor: Colors.danger },
-];
-
-interface PendingRequest {
-  id: string;
-  priority: BadgeVariant;
-  priorityLabel: string;
-  type: string;
-  person: string;
-  detail: string;
-  /** Relative time shown in top-right of card per Stitch */
-  timeAgo: string;
-}
-
-const PENDING: PendingRequest[] = [
-  {
-    id: 'p1',
-    priority: 'rejected',
-    priorityLabel: 'High',
-    type: 'Material Approval',
-    person: 'Rahul Kumar',
-    detail: 'Steel grade 500 requirement for structural reinforcement at Phase 2.',
-    timeAgo: '2h ago',
-  },
-  {
-    id: 'p2',
-    priority: 'pending',
-    priorityLabel: 'Medium',
-    type: 'Leave Request',
-    person: 'David Chen',
-    detail: 'David Chen - Site Supervisor. Aug 12-14.',
-    timeAgo: '4h ago',
-  },
-  {
-    id: 'p3',
-    priority: 'pending',
-    priorityLabel: 'Low',
-    type: 'Expense Claim',
-    person: 'Vikram Singh',
-    detail: 'Transportation and fuel - $145.00',
-    timeAgo: '1d ago',
-  },
-];
-
-// ─── Action Buttons — Stitch: "Approve" (navy) + "Review" (outline) ───────────
-
-const ActionButtons: React.FC<{ onReview: () => void }> = ({ onReview }) => (
-  <View style={styles.actionRow}>
-    <TouchableOpacity activeOpacity={0.85} style={styles.approveBtn}>
-      <Text style={styles.approveText}>Approve</Text>
-    </TouchableOpacity>
-    <TouchableOpacity activeOpacity={0.85} style={styles.reviewBtn} onPress={onReview}>
-      <Text style={styles.reviewText}>Review</Text>
-    </TouchableOpacity>
-  </View>
-);
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -154,8 +55,26 @@ export default function AdminDashboardScreen(): React.ReactElement {
   // Fetch API data for counts
   const { data: employeeData, isLoading: isLoadingEmployees } = useEmployeeCount();
   const { data: projectData, isLoading: isLoadingProjects } = useProjectCount();
-  const { data: pendingRequests } = useAllRequests('PENDING');
+  const { data: allProjectsData, isLoading: isLoadingAllProjects } = useAllProjects(1);
+  const { data: pendingRequests, isLoading: isLoadingRequests } = useAllRequests('PENDING');
   const updateRequestStatus = useUpdateRequestStatus();
+
+  // Calculate ongoing projects count from real data
+  const ongoingProjectsCount = allProjectsData?.data.filter(
+    (p) => p.status === 'ACTIVE' || p.status === 'IN_PROGRESS'
+  ).length ?? 0;
+
+  // Map real projects to UI format (top 3 for dashboard preview)
+  const statusProjects: StatusProject[] = allProjectsData?.data
+    .slice(0, 3)
+    .map((project, index) => ({
+      id: project.id,
+      name: project.name,
+      client: project.clientName || 'N/A',
+      progress: project.progressPercent ?? 0,
+      subtitle: `${project.location} • ${project.status.replace('_', ' ')}`,
+      barColor: index % 2 === 0 ? Colors.primary : Colors.accent,
+    })) ?? [];
 
   // Build KPIs array with real data
   const KPIS: Kpi[] = [
@@ -171,11 +90,12 @@ export default function AdminDashboardScreen(): React.ReactElement {
       isLoading: isLoadingProjects,
     },
     {
-      value: ONGOING_PROJECTS_COUNT,
+      value: isLoadingAllProjects ? '--' : ongoingProjectsCount,
       label: 'Ongoing',
       accent: Colors.accent,
       icon: 'progress',
       iconBg: Colors.warningSubtle,
+      isLoading: isLoadingAllProjects,
     },
     {
       value: isLoadingEmployees
@@ -188,12 +108,13 @@ export default function AdminDashboardScreen(): React.ReactElement {
       isLoading: isLoadingEmployees,
     },
     {
-      value: PENDING_REQUESTS_COUNT,
+      value: isLoadingRequests ? '--' : pendingRequests?.length ?? 0,
       label: 'Pending Requests',
       accent: Colors.danger,
       valueColor: Colors.danger,
       icon: 'document',
       iconBg: Colors.dangerSubtle,
+      isLoading: isLoadingRequests,
     },
   ];
 
@@ -245,65 +166,36 @@ export default function AdminDashboardScreen(): React.ReactElement {
           </View>
 
           {/* ── Project Status — PATCH: "View All" amber, subtitle format ──── */}
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Project Status</Text>
-            <TouchableOpacity onPress={() => router.push('/(admin)/projects' as never)}>
-              <Text style={styles.viewAll}>View All</Text>
-            </TouchableOpacity>
-          </View>
-          <Card style={styles.listCard}>
-            {STATUS_PROJECTS.map((p, i) => (
-              <View
-                key={p.id}
-                style={[styles.statusRow, i < STATUS_PROJECTS.length - 1 && styles.rowDivider]}
-              >
-                <Text style={styles.statusName}>{p.name}</Text>
-                <Text style={styles.statusSubtitle}>{p.subtitle}</Text>
-                <View style={styles.statusProgress}>
-                  <ProgressBar
-                    value={p.progress}
-                    showLabel={false}
-                    fillColor={p.barColor}
-                    style={styles.flex1}
-                  />
-                  <Text style={styles.statusPct}>{p.progress}%</Text>
-                </View>
+          {statusProjects.length > 0 && (
+            <>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Project Status</Text>
+                <TouchableOpacity onPress={() => router.push('/(admin)/projects' as never)}>
+                  <Text style={styles.viewAll}>View All</Text>
+                </TouchableOpacity>
               </View>
-            ))}
-          </Card>
-
-          {/* ── Recent Activity — PATCH: timeline dots, no avatars ──────── */}
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Activity</Text>
-          </View>
-          <Card style={styles.listCard}>
-            {ACTIVITIES.map((a, i) => (
-              <View
-                key={a.id}
-                style={[
-                  styles.timelineRow,
-                  i < ACTIVITIES.length - 1 && styles.rowDivider,
-                ]}
-              >
-                {/* Timeline dot + line */}
-                <View style={styles.timelineDotCol}>
-                  <View style={[styles.timelineDot, { backgroundColor: a.dotColor }]} />
-                  {i < ACTIVITIES.length - 1 && <View style={styles.timelineLine} />}
-                </View>
-                {/* Content */}
-                <View style={styles.timelineContent}>
-                  <Text style={styles.timelineTime}>{a.time}</Text>
-                  <Text style={styles.timelineText}>{a.text}</Text>
-                </View>
-              </View>
-            ))}
-
-            {/* Footer: "View Full History" button */}
-            <TouchableOpacity style={styles.historyBtn} activeOpacity={0.7} onPress={() => router.push('/(admin)/activity-history' as never)}>
-              <Text style={styles.historyBtnText}>View Full History</Text>
-              <Icon name="forward" size="sm" color={Colors.textPrimary} />
-            </TouchableOpacity>
-          </Card>
+              <Card style={styles.listCard}>
+                {statusProjects.map((p, i) => (
+                  <View
+                    key={p.id}
+                    style={[styles.statusRow, i < statusProjects.length - 1 && styles.rowDivider]}
+                  >
+                    <Text style={styles.statusName}>{p.name}</Text>
+                    <Text style={styles.statusSubtitle}>{p.subtitle}</Text>
+                    <View style={styles.statusProgress}>
+                      <ProgressBar
+                        value={p.progress}
+                        showLabel={false}
+                        fillColor={p.barColor}
+                        style={styles.flex1}
+                      />
+                      <Text style={styles.statusPct}>{p.progress}%</Text>
+                    </View>
+                  </View>
+                ))}
+              </Card>
+            </>
+          )}
 
           {/* ── Action Required — Real pending requests from API ──────── */}
           {pendingRequests && pendingRequests.length > 0 && (

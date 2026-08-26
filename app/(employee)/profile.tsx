@@ -14,13 +14,7 @@ import { useMe } from '../../src/hooks/useMe';
 import { queryKeys } from '../../src/services/api/queryKeys';
 import { Colors, FontFamily, FontSize, Spacing, BorderRadius, withAlpha } from '../../src/constants/tokens';
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
-
-const STATS = [
-  { label: 'Projects', value: '4', color: Colors.primary },
-  { label: 'Uploads', value: '18', color: Colors.primary },
-  { label: 'Attendance', value: '87%', color: Colors.success },
-];
+// Stats are now calculated from real API data (useMe, useAttendanceCalendar)
 
 interface Row {
   icon: IconName;
@@ -96,6 +90,18 @@ export default function ProfileScreen(): React.ReactElement {
         .map((n) => n[0])
         .join('')
         .toUpperCase();
+
+  // Calculate real stats from API data
+  const projectsCount = meData?._count?.assignments ?? 0;
+  const uploadsCount = meData?._count?.uploads ?? 0;
+  const attendanceCount = meData?._count?.attendanceLogs ?? 0;
+
+  // Format attendance as count (not percentage) since we don't have total working days in profile
+  const stats = [
+    { label: 'Projects', value: String(projectsCount), color: Colors.primary },
+    { label: 'Uploads', value: String(uploadsCount), color: Colors.primary },
+    { label: 'Attendance', value: String(attendanceCount), color: Colors.success },
+  ];
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -175,13 +181,13 @@ export default function ProfileScreen(): React.ReactElement {
 
           {/* Stats card overlapping header */}
           <Card noPadding style={styles.statsCard}>
-            {STATS.map((stat, idx) => (
+            {stats.map((stat, idx) => (
               <React.Fragment key={stat.label}>
                 <View style={styles.statCell}>
                   <Text style={[styles.statValue, { color: stat.color }]}>{stat.value}</Text>
                   <Text style={styles.statLabel}>{stat.label}</Text>
                 </View>
-                {idx < STATS.length - 1 && <View style={styles.statDivider} />}
+                {idx < stats.length - 1 && <View style={styles.statDivider} />}
               </React.Fragment>
             ))}
           </Card>

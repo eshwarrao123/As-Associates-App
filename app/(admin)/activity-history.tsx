@@ -12,45 +12,12 @@ import {
   Spacing,
 } from '../../src/constants/tokens';
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
+// ─── Type Definitions ─────────────────────────────────────────────────────────
 
 type ActivityType = 'upload' | 'progress' | 'request' | 'attendance';
 
-interface ActivityItem {
-  id: string;
-  time: string;
-  date: string;
-  employeeName: string;
-  action: string;
-  projectName: string;
-  type: ActivityType;
-}
-
-const ACTIVITIES: ActivityItem[] = [
-  { id: '1', time: '10:45 AM', date: 'Today', employeeName: 'Rahul Kumar', action: 'uploaded site photos for', projectName: 'ICICI Bank HQ - Andheri', type: 'upload' },
-  { id: '2', time: '09:30 AM', date: 'Today', employeeName: 'Anita Sharma', action: 'marked foundation stage complete on', projectName: 'Axis Bank - Bandra', type: 'progress' },
-  { id: '3', time: '08:15 AM', date: 'Today', employeeName: 'Vikram Patel', action: 'raised a material request for', projectName: 'HDFC Bank - Powai', type: 'request' },
-  { id: '4', time: '06:20 PM', date: 'Yesterday', employeeName: 'Priya Joshi', action: 'marked attendance for', projectName: 'Tech Park Phase 1', type: 'attendance' },
-  { id: '5', time: '04:50 PM', date: 'Yesterday', employeeName: 'Manish Rao', action: 'uploaded progress photos for', projectName: 'Lodha Allumount', type: 'upload' },
-  { id: '6', time: '02:30 PM', date: 'Yesterday', employeeName: 'Rahul Kumar', action: 'submitted a leave request', projectName: 'ICICI Bank HQ - Andheri', type: 'request' },
-  { id: '7', time: '11:00 AM', date: 'Yesterday', employeeName: 'Anita Sharma', action: 'marked civil works stage complete on', projectName: 'Axis Bank - Bandra', type: 'progress' },
-  { id: '8', time: '05:30 PM', date: '26 Jul', employeeName: 'Vikram Patel', action: 'marked attendance for', projectName: 'HDFC Bank - Powai', type: 'attendance' },
-  { id: '9', time: '03:15 PM', date: '26 Jul', employeeName: 'Priya Joshi', action: 'uploaded site photos for', projectName: 'Tech Park Phase 1', type: 'upload' },
-  { id: '10', time: '01:45 PM', date: '26 Jul', employeeName: 'Manish Rao', action: 'raised an issue request for', projectName: 'Lodha Allumount', type: 'request' },
-  { id: '11', time: '10:20 AM', date: '25 Jul', employeeName: 'Rahul Kumar', action: 'marked electrical stage complete on', projectName: 'ICICI Bank HQ - Andheri', type: 'progress' },
-  { id: '12', time: '09:00 AM', date: '25 Jul', employeeName: 'Anita Sharma', action: 'marked attendance for', projectName: 'Axis Bank - Bandra', type: 'attendance' },
-  { id: '13', time: '07:30 AM', date: '25 Jul', employeeName: 'Vikram Patel', action: 'uploaded progress photos for', projectName: 'HDFC Bank - Powai', type: 'upload' },
-];
-
 type Filter = 'All' | 'Uploads' | 'Progress' | 'Requests' | 'Attendance';
 const FILTERS: Filter[] = ['All', 'Uploads', 'Progress', 'Requests', 'Attendance'];
-
-const FILTER_TYPE_MAP: Record<Exclude<Filter, 'All'>, ActivityType> = {
-  Uploads: 'upload',
-  Progress: 'progress',
-  Requests: 'request',
-  Attendance: 'attendance',
-};
 
 const TYPE_COLOR: Record<ActivityType, string> = {
   upload: Colors.primary,
@@ -65,17 +32,9 @@ export default function ActivityHistoryScreen(): React.ReactElement {
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>('All');
 
-  const filtered =
-    filter === 'All'
-      ? ACTIVITIES
-      : ACTIVITIES.filter((a) => a.type === FILTER_TYPE_MAP[filter]);
-
-  // Group by date
-  const grouped: Record<string, ActivityItem[]> = {};
-  filtered.forEach((item) => {
-    if (!grouped[item.date]) grouped[item.date] = [];
-    grouped[item.date].push(item);
-  });
+  // No backend activity/audit log system exists
+  // Show empty state instead of fake data
+  const activities: never[] = [];
 
   return (
     <>
@@ -113,40 +72,14 @@ export default function ActivityHistoryScreen(): React.ReactElement {
         </View>
 
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          {Object.keys(grouped).map((date) => (
-            <View key={date} style={styles.dateSection}>
-              {/* Date header */}
-              <Text style={styles.dateLabel}>{date}</Text>
-
-              {/* Timeline items */}
-              {grouped[date].map((item, idx) => {
-                const isLast = idx === grouped[date].length - 1;
-                return (
-                  <View key={item.id} style={styles.timelineRow}>
-                    {/* Left: time + vertical line */}
-                    <View style={styles.timelineLeft}>
-                      <Text style={styles.timeLabel}>{item.time}</Text>
-                      <View style={styles.timelineTrack}>
-                        <View style={[styles.dot, { backgroundColor: TYPE_COLOR[item.type] }]} />
-                        {!isLast && <View style={styles.line} />}
-                      </View>
-                    </View>
-
-                    {/* Right: activity text */}
-                    <View style={styles.timelineRight}>
-                      <Text style={styles.activityText}>
-                        <Text style={styles.activityName}>{item.employeeName}</Text>
-                        {' '}
-                        <Text style={styles.activityAction}>{item.action}</Text>
-                        {' '}
-                        <Text style={styles.activityProject}>{item.projectName}</Text>
-                      </Text>
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
-          ))}
+          {/* Empty state - no backend activity/audit system exists */}
+          <View style={styles.emptyContainer}>
+            <Icon name="info" size="xl" color={Colors.textMuted} />
+            <Text style={styles.emptyTitle}>Activity History Not Available</Text>
+            <Text style={styles.emptyText}>
+              Activity logging is not currently enabled. Recent actions can be viewed in the dashboard.
+            </Text>
+          </View>
         </ScrollView>
 
         <AdminBottomNav activeIndex={0} />
@@ -255,5 +188,28 @@ const styles = StyleSheet.create({
   activityProject: {
     fontFamily: FontFamily.medium,
     color: Colors.textPrimary,
+  },
+
+  // Empty state
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing[8],
+    paddingHorizontal: Spacing[4],
+    gap: Spacing[3],
+  },
+  emptyTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.lg,
+    color: Colors.textPrimary,
+    textAlign: 'center',
+  },
+  emptyText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.md,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: FontSize.md * 1.5,
   },
 });

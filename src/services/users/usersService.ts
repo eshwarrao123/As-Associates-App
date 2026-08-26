@@ -15,6 +15,12 @@ interface GetMeResponse {
   designation?: string;
   department?: string;
   profilePhoto?: string | null;
+  _count?: {
+    assignments: number;
+    attendanceLogs: number;
+    progressLogs: number;
+    uploads: number;
+  };
 }
 
 interface UserResponse {
@@ -48,11 +54,22 @@ export async function getMe(): Promise<GetMeResponse> {
  * Fetches all users with pagination.
  * @param page - Page number (default: 1)
  * @param limit - Items per page (default: 10)
+ * @param status - Filter by user status (optional)
  * @returns Paginated list of users
  */
-export async function getUsers(page: number = 1, limit: number = 10) {
+export async function getUsers(
+  page: number = 1,
+  limit: number = 10,
+  status?: 'PENDING' | 'ACTIVE' | 'DEACTIVATED',
+) {
+  const params = new URLSearchParams({
+    page: String(page),
+    limit: String(limit),
+  });
+  if (status) params.append('status', status);
+
   const response = await apiClient.get<PaginatedResponse<UserResponse>>(
-    `/users?page=${page}&limit=${limit}`,
+    `/users?${params.toString()}`,
   );
   return response.data;
 }

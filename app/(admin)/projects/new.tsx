@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../../../src/components/ui/Button';
@@ -9,6 +9,7 @@ import { Input } from '../../../src/components/ui/Input';
 import { Avatar } from '../../../src/components/ui/Avatar';
 import { Dropdown } from '../../../src/components/ui/Dropdown';
 import { useCreateProject } from '../../../src/hooks/useAdminProjects';
+import { useEmployees } from '../../../src/hooks/useEmployees';
 import { getErrorMessage } from '../../../src/services/api/errorHandler';
 import {
   BorderRadius,
@@ -20,10 +21,12 @@ import {
   withAlpha,
 } from '../../../src/constants/tokens';
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
+// ─── Static configuration ─────────────────────────────────────────────────────
 
+// Client options for this single-company internal app
 const CLIENT_OPTIONS = ['ICICI Bank', 'Axis Bank', 'HDFC Bank', 'Kotak Mahindra', 'Commercial', 'Residential'];
 
+// Service categories - domain-specific enum maintained as static config
 const SERVICES = [
   'Civil',
   'Electrical',
@@ -37,25 +40,14 @@ const SERVICES = [
   'Fire Safety',
 ];
 
-interface Engineer {
-  id: string;
-  name: string;
-  initials: string;
-  role: string;
-}
-
-const ENGINEERS: Engineer[] = [
-  { id: 'e1', name: 'Rahul Kumar', initials: 'RK', role: 'Site Engineer' },
-  { id: 'e2', name: 'Anita Sharma', initials: 'AS', role: 'Civil Engineer' },
-  { id: 'e3', name: 'Vikram Patel', initials: 'VP', role: 'Electrical Engineer' },
-  { id: 'e4', name: 'Priya Joshi', initials: 'PJ', role: 'Project Lead' },
-];
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function NewProjectScreen(): React.ReactElement {
   const router = useRouter();
   const createProject = useCreateProject();
+
+  // Fetch active employees for team assignment
+  const { data: employeesData, isLoading: isLoadingEmployees } = useEmployees(1, 'ACTIVE');
 
   const [name, setName] = useState('');
   const [client, setClient] = useState<string | null>(null);
@@ -73,7 +65,15 @@ export default function NewProjectScreen(): React.ReactElement {
   const toggleTeam = (id: string) =>
     setTeam((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
-  const filteredEngineers = ENGINEERS.filter((e) =>
+  // Map backend employees to UI format
+  const engineers = employeesData?.data.map((user) => ({
+    id: user.id,
+    name: `${user.firstName} ${user.lastName}`,
+    initials: `${user.firstName[0]}${user.lastName[0]}`.toUpperCase(),
+    role: user.designation || 'Employee',
+  })) ?? [];
+
+  const filteredEngineers = engineers.filter((e) =>
     e.name.toLowerCase().includes(search.trim().toLowerCase())
   );
 
@@ -210,29 +210,44 @@ export default function NewProjectScreen(): React.ReactElement {
               onChangeText={setSearch}
               placeholder="Search engineers..."
               placeholderTextColor={Colors.textMuted}
-              editable={!createProject.isPending}
+              editable={!createProject.isPending && !isLoadingEmployees}
             />
-            {filteredEngineers.map((e) => {
-              const selected = team.includes(e.id);
-              return (
-                <TouchableOpacity
-                  key={e.id}
-                  activeOpacity={0.7}
-                  onPress={() => toggleTeam(e.id)}
-                  style={[styles.engineerRow, selected && styles.engineerRowActive]}
-                  disabled={createProject.isPending}
-                >
-                  <Avatar initials={e.initials} size="sm" />
-                  <View style={styles.flex1}>
-                    <Text style={styles.engineerName}>{e.name}</Text>
-                    <Text style={styles.engineerRole}>{e.role}</Text>
-                  </View>
-                  <View style={[styles.selectDot, selected && styles.selectDotActive]}>
-                    {selected && <Text style={styles.selectDotText}>✓</Text>}
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
+            {isLoadingEmployees ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color={Colors.primary} />
+                <Text style={styles.loadingText}>Loading employees...</Text>
+              </View>
+            ) : engineers.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>No active employees available</Text>
+              </View>
+            ) : filteredEngineers.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>No employees match "{search}"</Text>
+              </View>
+            ) : (
+              filteredEngineers.map((e) => {
+                const selected = team.includes(e.id);
+                return (
+                  <TouchableOpacity
+                    key={e.id}
+                    activeOpacity={0.7}
+                    onPress={() => toggleTeam(e.id)}
+                    style={[styles.engineerRow, selected && styles.engineerRowActive]}
+                    disabled={createProject.isPending}
+                  >
+                    <Avatar initials={e.initials} size="sm" />
+                    <View style={styles.flex1}>
+                      <Text style={styles.engineerName}>{e.name}</Text>
+                      <Text style={styles.engineerRole}>{e.role}</Text>
+                    </View>
+                    <View style={[styles.selectDot, selected && styles.selectDotActive]}>
+                      {selected && <Text style={styles.selectDotText}>✓</Text>}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })
+            )}
           </Card>
 
           {/* Description */}
@@ -430,5 +445,29 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.regular,
     fontSize: FontSize.base,
     color: Colors.textPrimary,
+  },
+
+  // Loading and empty states
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing[2],
+    paddingVertical: Spacing[4],
+  },
+  loadingText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: Spacing[4],
+  },
+  emptyText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+    textAlign: 'center',
   },
 });

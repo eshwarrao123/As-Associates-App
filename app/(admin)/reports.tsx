@@ -8,6 +8,7 @@ import { Dropdown } from '../../src/components/ui/Dropdown';
 import { AdminBottomNav } from '../../src/components/ui/AdminBottomNav';
 import { Icon } from '../../src/components/ui/Icon';
 import { useAdminAttendance } from '../../src/hooks/useAdminReports';
+import { useAllProjects } from '../../src/hooks/useAdminProjects';
 import {
   BorderRadius,
   Colors,
@@ -23,7 +24,7 @@ import {
 const REPORT_TYPES = ['Attendance', 'Projects', 'Requests', 'Financial'] as const;
 type ReportType = (typeof REPORT_TYPES)[number];
 
-const PROJECT_OPTIONS = ['All Projects', 'ICICI Bank HQ - Andheri', 'Axis Bank - Bandra', 'HDFC Bank - Powai'];
+// Static configuration for date range filter
 const RANGE_OPTIONS = ['This Week', 'This Month', 'Last Month', 'This Quarter', 'Custom'];
 
 interface AttendanceRow {
@@ -81,6 +82,14 @@ export default function ReportsScreen(): React.ReactElement {
   const [reportType, setReportType] = useState<ReportType>('Attendance');
   const [project, setProject] = useState<string | null>('All Projects');
   const [range, setRange] = useState<string | null>('This Month');
+
+  // Fetch real projects for filter dropdown
+  const { data: projectsData } = useAllProjects(1);
+
+  // Build project options from real data
+  const projectOptions = ['All Projects'].concat(
+    projectsData?.data.map((p) => p.name) ?? []
+  );
 
   // Fetch attendance data (only when reportType is 'Attendance')
   const {
@@ -153,7 +162,7 @@ export default function ReportsScreen(): React.ReactElement {
           {/* Filters */}
           <Card style={styles.section}>
             <Text style={styles.sectionLabel}>FILTERS</Text>
-            <Dropdown label="Project"    value={project} options={PROJECT_OPTIONS} onSelect={setProject} />
+            <Dropdown label="Project"    value={project} options={projectOptions} onSelect={setProject} />
             <Dropdown label="Date Range" value={range}   options={RANGE_OPTIONS}   onSelect={setRange}   />
             <Button label="Generate Report" onPress={() => {}} />
           </Card>

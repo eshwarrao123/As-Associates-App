@@ -19,17 +19,13 @@ import { Dropdown } from '../../src/components/ui/Dropdown';
 import { Icon } from '../../src/components/ui/Icon';
 import { BottomNav } from '../../src/components/ui/BottomNav';
 import { useUploadFile } from '../../src/hooks/useUploads';
+import { useMyProjects } from '../../src/hooks/useMyProjects';
 import { getErrorMessage } from '../../src/services/api/errorHandler';
 import { Colors, FontFamily, FontSize, Spacing, BorderRadius } from '../../src/constants/tokens';
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
+// ─── Static configuration ─────────────────────────────────────────────────────
 
-const PROJECT_OPTIONS = [
-  'ICICI Bank HQ - Andheri',
-  'Axis Bank - Bandra',
-  'HDFC Bank - Powai',
-];
-
+// Service categories - domain-specific enum maintained as static config
 const CATEGORY_OPTIONS = [
   'Civil',
   'Electrical',
@@ -54,7 +50,10 @@ export default function UploadScreen(): React.ReactElement {
   const scrollRef = useRef<ScrollView>(null);
   const formOffsetY = useRef(0);
 
-  const [project, setProject] = useState<string | null>(PROJECT_OPTIONS[0]);
+  // Fetch real assigned projects
+  const { data: projects, isLoading: isLoadingProjects } = useMyProjects();
+
+  const [projectId, setProjectId] = useState<string | null>(null);
   const [category, setCategory] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   const [selectedImages, setSelectedImages] = useState<
@@ -62,6 +61,21 @@ export default function UploadScreen(): React.ReactElement {
   >([]);
 
   const uploadFile = useUploadFile();
+
+  // Set default project when projects load
+  React.useEffect(() => {
+    if (projects && projects.length > 0 && !projectId) {
+      setProjectId(projects[0].id);
+    }
+  }, [projects, projectId]);
+
+  // Convert projects to dropdown options
+  const projectOptions = projects?.map((p) => ({
+    label: `${p.name} - ${p.location}`,
+    value: p.id,
+  })) ?? [];
+
+  const selectedProject = projectOptions.find((opt) => opt.value === projectId);
 
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -179,13 +193,26 @@ export default function UploadScreen(): React.ReactElement {
             {/* Card 1 — Project Info */}
             <Card style={styles.section}>
               <Text style={styles.sectionLabel}>PROJECT INFO</Text>
-              <Dropdown
-                label="Select Project"
-                placeholder="Choose a project"
-                value={project}
-                options={PROJECT_OPTIONS}
-                onSelect={setProject}
-              />
+              {isLoadingProjects ? (
+                <View style={styles.dropdownPlaceholder}>
+                  <ActivityIndicator size="small" color={Colors.primary} />
+                </View>
+              ) : projectOptions.length === 0 ? (
+                <View style={styles.dropdownPlaceholder}>
+                  <Text style={styles.emptyText}>No projects assigned</Text>
+                </View>
+              ) : (
+                <Dropdown
+                  label="Select Project"
+                  placeholder="Choose a project"
+                  value={selectedProject?.label ?? null}
+                  options={projectOptions.map((opt) => opt.label)}
+                  onSelect={(label) => {
+                    const selected = projectOptions.find((opt) => opt.label === label);
+                    if (selected) setProjectId(selected.value);
+                  }}
+                />
+              )}
               <Dropdown
                 label="Select Work Category"
                 placeholder="Choose a category"
@@ -439,6 +466,20 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
   },
   dateValue: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+  },
+  dropdownPlaceholder: {
+    height: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: BorderRadius.btn,
+    backgroundColor: Colors.surface,
+  },
+  emptyText: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.sm,
     color: Colors.textSecondary,

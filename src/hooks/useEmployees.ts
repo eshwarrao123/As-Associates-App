@@ -5,10 +5,13 @@ import * as usersService from '../services/users/usersService';
 /**
  * Hook to fetch all employees with pagination.
  */
-export function useEmployees(page: number = 1) {
+export function useEmployees(
+  page: number = 1,
+  status?: 'PENDING' | 'ACTIVE' | 'DEACTIVATED',
+) {
   return useQuery({
-    queryKey: queryKeys.users.all(page),
-    queryFn: () => usersService.getUsers(page, 20),
+    queryKey: [...queryKeys.users.all(page), status],
+    queryFn: () => usersService.getUsers(page, 20, status),
   });
 }
 
