@@ -102,6 +102,14 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
     set({ isLoading: true, error: null });
 
     try {
+      // Clear any previously persisted data before login
+      await Promise.all([
+        AsyncStorage.removeItem(STORAGE_KEYS.TOKEN),
+        AsyncStorage.removeItem(STORAGE_KEYS.USER),
+        tokenStore.clearTokens(),
+      ]);
+      console.log('loginAction: cleared old data');
+
       const response = await authService.login(employeeCode, password);
       console.log('loginAction: API success', { response });
 
@@ -120,7 +128,7 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
         role: response.user.role as UserRole,
         department: response.user.department,
         avatarInitials: `${response.user.firstName[0]}${response.user.lastName[0]}`.toUpperCase(),
-        mustChangePassword: response.mustChangePassword,
+        mustChangePassword: response.user.mustChangePassword ?? false,
       };
       console.log('loginAction: user mapped', { user });
 
@@ -168,18 +176,19 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
     // Clear tokens from secure storage
     await tokenStore.clearTokens();
 
-    // Clear user from AsyncStorage
+    // Clear ALL persisted data from AsyncStorage
     await Promise.all([
       AsyncStorage.removeItem(STORAGE_KEYS.TOKEN),
       AsyncStorage.removeItem(STORAGE_KEYS.USER),
     ]);
 
-    // Reset store to initial state
+    // Reset ALL store fields to initial state
     set({
       user: null,
       token: null,
       role: null,
       isAuthenticated: false,
+      isHydrated: true, // Keep hydrated true (logout happened after hydration)
       isLoading: false,
       error: null,
     });

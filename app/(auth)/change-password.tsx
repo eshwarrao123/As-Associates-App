@@ -7,14 +7,16 @@ import {
   Text,
   View,
   BackHandler,
+  TouchableOpacity,
 } from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter, useFocusEffect, Stack } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../../src/components/ui/Button';
 import { Input } from '../../src/components/ui/Input';
+import { Icon } from '../../src/components/ui/Icon';
 import { useAuthStore } from '../../src/store/auth.store';
 import { Colors, FontFamily, FontSize, Spacing, BorderRadius, Shadow } from '../../src/constants/tokens';
 import * as authService from '../../src/services/auth/authService';
@@ -106,18 +108,33 @@ export default function ChangePasswordScreen(): React.ReactElement {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+    <>
+      <Stack.Screen
+        options={{
+          headerShown: !user?.mustChangePassword,
+          headerTitle: 'Change Password',
+          headerStyle: {
+            backgroundColor: Colors.primary,
+          },
+          headerTintColor: Colors.textOnPrimary,
+          headerTitleStyle: {
+            fontFamily: FontFamily.bold,
+            fontSize: FontSize.lg,
+          },
+        }}
+      />
+      <SafeAreaView style={styles.safeArea}>
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          {/* ─── Card ──────────────────────────────────────────────────── */}
-          <View style={styles.card}>
+          <ScrollView
+            contentContainerStyle={styles.scroll}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {/* ─── Card ──────────────────────────────────────────────────── */}
+            <View style={styles.card}>
             {/* Heading */}
             <Text style={styles.heading}>Change Password</Text>
             <Text style={styles.subheading}>
@@ -195,10 +212,11 @@ export default function ChangePasswordScreen(): React.ReactElement {
                 style={styles.submitBtn}
               />
             </View>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </>
   );
 }
 

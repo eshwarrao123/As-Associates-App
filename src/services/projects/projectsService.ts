@@ -68,11 +68,15 @@ function mapProjectResponse(project: ProjectResponse) {
  * @returns Array of projects
  */
 export async function getMyProjects() {
-  const response = await apiClient.get<{ data: ProjectResponse[] }>(
-    '/projects/my',
+  // Backend GET /projects is role-aware — filters by assignments for employees
+  const response = await apiClient.get<{ data: ProjectResponse[]; meta: unknown }>(
+    '/projects',
   );
 
-  // Map API response to local Project type
+  console.log('getMyProjects response:', JSON.stringify(response.data));
+
+  // Backend returns { data: [...], meta: {...} }
+  // So we access response.data.data (the array)
   return response.data.data.map(mapProjectResponse);
 }
 
@@ -175,14 +179,15 @@ export async function deleteProject(id: string) {
  * @returns Array of assigned users
  */
 export async function getProjectAssignments(projectId: string) {
-  const response = await apiClient.get<{ data: UserAssignmentResponse[] }>(
+  const response = await apiClient.get<AssignmentResponse[]>(
     `/projects/${projectId}/assignments`,
   );
-  return response.data.data;
+  return response.data;
 }
 
 /**
  * Assigns employees to a project.
+ * Backend only supports one assignment at a time, so we loop through all IDs.
  * @param projectId - Project ID
  * @param employeeIds - Array of employee IDs to assign
  * @returns Updated assignments
@@ -191,11 +196,33 @@ export async function assignEmployees(
   projectId: string,
   employeeIds: string[],
 ) {
-  const response = await apiClient.post<{ data: UserAssignmentResponse[] }>(
-    `/projects/${projectId}/assignments`,
-    { employeeIds },
+  // Backend POST /projects/:id/assignments expects { userId: string } (one at a time)
+  // So we call it multiple times via Promise.all
+  const results = await Promise.all(
+    employeeIds.map((userId) =>
+      apiClient.post<AssignmentResponse>(
+        `/projects/${projectId}/assignments`,
+        { userId },
+      ),
+    ),
   );
-  return response.data.data;
+
+  // Return array of assignment responses
+  return results.map((res) => res.data);
+}
+
+// ─── Assignment Response Type ─────────────────────────────────────────────────
+
+interface AssignmentResponse {
+  id: string;
+  isActive: boolean;
+  createdAt: string;
+  user: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    employeeCode?: string;
+  };
 }
 
 /**

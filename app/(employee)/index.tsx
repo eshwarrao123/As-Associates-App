@@ -12,6 +12,9 @@ import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../src/store/auth.store';
 import { useMe } from '../../src/hooks/useMe';
+import { useMyProjects } from '../../src/hooks/useMyProjects';
+import { useAttendanceCalendar } from '../../src/hooks/useAttendance';
+import { useMyUploads } from '../../src/hooks/useUploads';
 import { Avatar } from '../../src/components/ui/Avatar';
 import { Badge } from '../../src/components/ui/Badge';
 import { ProgressBar } from '../../src/components/ui/ProgressBar';
@@ -30,62 +33,7 @@ import type { Project, RecentUpload, AttendanceSummary } from '../../src/types/e
 
 // ─── Mock data (replace with TanStack Query hooks) ────────────────────────────
 
-// TODO Phase 3: replace with useQuery — useMyProjects()
-const MOCK_PROJECTS: Project[] = [
-  {
-    id: '1',
-    name: 'ICICI Bank HQ',
-    client: 'ICICI Bank',
-    location: 'Andheri, Mumbai',
-    status: 'ongoing',
-    progress: 65,
-    startDate: '2024-01-15',
-    endDate: '2024-08-30',
-  },
-  {
-    id: '2',
-    name: 'Godrej One Retrofit',
-    client: 'Godrej Properties',
-    location: 'Vikhroli, Mumbai',
-    status: 'ongoing',
-    progress: 30,
-    startDate: '2024-03-01',
-    endDate: '2024-12-15',
-  },
-];
-
-// TODO Phase 3: replace with useQuery — useAttendanceCalendar()
-const MOCK_ATTENDANCE: AttendanceSummary = {
-  present: 18,
-  absent: 2,
-  late: 1,
-  totalWorkingDays: 21,
-};
-
-// TODO Phase 3: replace with useQuery — useMyUploads()
-const MOCK_UPLOADS: RecentUpload[] = [
-  {
-    id: '1',
-    filename: 'site_progress_july_w3.jpg',
-    projectName: 'ICICI Bank HQ',
-    uploadedAt: new Date().toISOString(),
-    fileType: 'image',
-  },
-  {
-    id: '2',
-    filename: 'inspection_report_q2.pdf',
-    projectName: 'Godrej One Retrofit',
-    uploadedAt: new Date(Date.now() - 86400000).toISOString(),
-    fileType: 'pdf',
-  },
-  {
-    id: '3',
-    filename: 'floor_plan_v2.jpg',
-    projectName: 'ICICI Bank HQ',
-    uploadedAt: new Date(Date.now() - 86400000 * 5).toISOString(),
-    fileType: 'image',
-  },
-];
+// No more mock data — using real API hooks below
 
 // ─── Greeting helper ─────────────────────────────────────────────────────────
 
@@ -226,6 +174,21 @@ export default function EmployeeHomeScreen(): React.ReactElement {
   const router = useRouter();
   const greeting = getGreeting();
 
+  // Fetch real data from API
+  const { data: projects, isLoading: isLoadingProjects } = useMyProjects();
+  const { data: uploads, isLoading: isLoadingUploads } = useMyUploads();
+
+  // Get current month/year for attendance calendar
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1; // 1-12
+  const currentYear = now.getFullYear();
+  const { data: attendanceData } = useAttendanceCalendar(currentMonth, currentYear);
+
+  // Get today's attendance status
+  const todayDate = now.toISOString().split('T')[0]; // YYYY-MM-DD
+  const todayAttendance = attendanceData?.data?.find((record) => record.date === todayDate);
+  const isPresent = todayAttendance?.status === 'PRESENT' || todayAttendance?.status === 'HALF_DAY';
+
   const handleProjectPress = useCallback(
     (project: Project) => {
       router.push({
@@ -298,12 +261,13 @@ export default function EmployeeHomeScreen(): React.ReactElement {
           {/* ── Stats Row (2 cards) ────────────────────────────────────── */}
           <View style={styles.statsRow}>
             <StatCard
-              value={MOCK_PROJECTS.length}
+              value={projects?.length ?? 0}
               label={'Assigned\nProjects'}
             />
             <StatCard
-              iconName="checkCircle"
-              label="Present"
+              iconName={isPresent ? 'checkCircle' : undefined}
+              value={isPresent ? undefined : 'Absent'}
+              label={isPresent ? 'Present' : 'Today'}
             />
           </View>
 
@@ -314,19 +278,29 @@ export default function EmployeeHomeScreen(): React.ReactElement {
               linkText="View All"
               onPress={() => router.push('/(employee)/projects')}
             />
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.horizontalScroll}
-            >
-              {MOCK_PROJECTS.map((project) => (
-                <HorizontalProjectCard
-                  key={project.id}
-                  project={project}
-                  onPress={handleProjectPress}
-                />
-              ))}
-            </ScrollView>
+            {isLoadingProjects ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color={Colors.primary} />
+              </View>
+            ) : !projects || projects.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>No projects assigned yet.</Text>
+              </View>
+            ) : (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.horizontalScroll}
+              >
+                {projects.map((project) => (
+                  <HorizontalProjectCard
+                    key={project.id}
+                    project={project}
+                    onPress={handleProjectPress}
+                  />
+                ))}
+              </ScrollView>
+            )}
           </View>
 
           {/* ── Recent Uploads ─────────────────────────────────────────── */}
@@ -336,15 +310,31 @@ export default function EmployeeHomeScreen(): React.ReactElement {
               linkText="Gallery"
               onPress={() => router.push('/(employee)/gallery' as never)}
             />
-            <View style={styles.uploadsRow}>
-              {MOCK_UPLOADS.map((upload) => (
-                <UploadThumbnail
-                  key={upload.id}
-                  upload={upload}
-                  onPress={handleUploadPress}
-                />
-              ))}
-            </View>
+            {isLoadingUploads ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color={Colors.primary} />
+              </View>
+            ) : !uploads || uploads.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>No uploads yet.</Text>
+              </View>
+            ) : (
+              <View style={styles.uploadsRow}>
+                {uploads.slice(0, 3).map((upload) => (
+                  <UploadThumbnail
+                    key={upload.id}
+                    upload={{
+                      id: upload.id,
+                      filename: upload.publicId.split('/').pop() ?? 'upload',
+                      projectName: 'Project', // TODO: add project name to upload response
+                      uploadedAt: upload.createdAt,
+                      fileType: upload.resourceType === 'image' ? 'image' : 'pdf',
+                    }}
+                    onPress={handleUploadPress}
+                  />
+                ))}
+              </View>
+            )}
           </View>
         </ScrollView>
 
@@ -565,5 +555,26 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xs,
     color: Colors.surface,
     textAlign: 'center',
+  },
+
+  // ── Loading and empty states ────────────────────────────────────────────────
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing[6],
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing[6],
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.card,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  emptyText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.base,
+    color: Colors.textSecondary,
   },
 });

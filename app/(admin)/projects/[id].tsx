@@ -206,7 +206,7 @@ export default function ProjectDetailScreen(): React.ReactElement {
               <Button
                 label="Assign Engineers"
                 variant="outline"
-                onPress={() => router.push(`/(admin)/projects/assign-engineers` as never)}
+                onPress={() => router.push(`/(admin)/projects/assign-engineers?projectId=${id}` as never)}
               />
             </Card>
           )}

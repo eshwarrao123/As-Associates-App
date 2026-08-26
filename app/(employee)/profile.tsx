@@ -63,19 +63,19 @@ export default function ProfileScreen(): React.ReactElement {
   const { data: meData, isLoading: meLoading } = useMe();
   const storeUser = useAuthStore((state) => state.user);
 
-  // Use API data if available, fallback to store user
-  const apiUser = meData;
-  const displayFirstName = apiUser?.firstName ?? '';
-  const displayLastName = apiUser?.lastName ?? '';
-  const displayName = apiUser
-    ? `${apiUser.firstName} ${apiUser.lastName}`
+  // ALWAYS prioritize meData (fresh API data) over storeUser (cached data)
+  const displayUser = meData ?? storeUser;
+  const displayFirstName = meData?.firstName ?? '';
+  const displayLastName = meData?.lastName ?? '';
+  const displayName = meData
+    ? `${meData.firstName} ${meData.lastName}`
     : storeUser?.name ?? 'User';
-  const displayEmployeeCode = apiUser?.employeeCode ?? 'N/A';
-  const displayRole = apiUser?.role === 'ADMIN' ? 'Admin' : 'Employee';
-  const displayDesignation = apiUser?.designation ?? 'N/A';
-  const displayPhone = apiUser?.phone ?? 'Not provided';
-  const displayEmail = apiUser?.email ?? 'Not provided';
-  const displayStatus = apiUser?.status === 'ACTIVE' ? 'Active' : 'Deactivated';
+  const displayEmployeeCode = meData?.employeeCode ?? storeUser?.id ?? 'N/A';
+  const displayRole = meData?.role === 'ADMIN' ? 'Admin' : 'Employee';
+  const displayDesignation = meData?.designation ?? 'N/A';
+  const displayPhone = meData?.phone ?? 'Not provided';
+  const displayEmail = meData?.email ?? storeUser?.email ?? 'Not provided';
+  const displayStatus = meData?.status === 'ACTIVE' ? 'Active' : 'Deactivated';
 
   // Generate initials
   const initials = displayFirstName && displayLastName

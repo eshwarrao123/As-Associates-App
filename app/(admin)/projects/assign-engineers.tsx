@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
-import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
+import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar } from '../../../src/components/ui/Avatar';
 import { Button } from '../../../src/components/ui/Button';
+import { useEmployees } from '../../../src/hooks/useEmployees';
+import { useAssignEmployees } from '../../../src/hooks/useAdminProjects';
+import { getErrorMessage } from '../../../src/services/api/errorHandler';
 import {
   BorderRadius,
   Colors,
@@ -13,42 +16,74 @@ import {
   withAlpha,
 } from '../../../src/constants/tokens';
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
+// ─── Employee type from API ────────────────────────────────────────────────────
 
-interface Engineer {
+interface Employee {
   id: string;
-  name: string;
-  initials: string;
-  role: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  employeeCode?: string;
+  designation?: string;
+  status: 'PENDING' | 'ACTIVE' | 'DEACTIVATED';
 }
-
-const ALL_ENGINEERS: Engineer[] = [
-  { id: 'e1', name: 'Rahul Kumar',   initials: 'RK', role: 'Site Engineer' },
-  { id: 'e2', name: 'Anita Sharma',  initials: 'AS', role: 'Civil Engineer' },
-  { id: 'e3', name: 'Vikram Patel',  initials: 'VP', role: 'Electrical Engineer' },
-  { id: 'e4', name: 'Priya Joshi',   initials: 'PJ', role: 'Project Lead' },
-  { id: 'e5', name: 'Manoj Reddy',   initials: 'MR', role: 'HVAC Engineer' },
-  { id: 'e6', name: 'Sunita Verma',  initials: 'SV', role: 'Interior Designer' },
-];
-
-// e1, e2, e3 are already on this project
-const INITIAL_SELECTED = ['e1', 'e2', 'e3'];
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function AssignEngineersScreen(): React.ReactElement {
   const router = useRouter();
-  const [selected, setSelected] = useState<string[]>(INITIAL_SELECTED);
+  const params = useLocalSearchParams<{ projectId: string }>();
+  const projectId = params.projectId;
+
+  const [selected, setSelected] = useState<string[]>([]);
   const [search, setSearch] = useState('');
+
+  // Fetch real employees from API
+  const { data: employeesData, isLoading } = useEmployees(1);
+  const allEmployees = employeesData?.data ?? [];
+
+  // Assign employees mutation
+  const assignEmployees = useAssignEmployees();
 
   const toggle = (id: string) =>
     setSelected((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
 
-  const filtered = ALL_ENGINEERS.filter((e) =>
-    e.name.toLowerCase().includes(search.trim().toLowerCase())
-  );
+  const filtered = allEmployees.filter((e: Employee) => {
+    const fullName = `${e.firstName} ${e.lastName}`.toLowerCase();
+    const searchLower = search.trim().toLowerCase();
+    return (
+      fullName.includes(searchLower) ||
+      e.email.toLowerCase().includes(searchLower) ||
+      e.employeeCode?.toLowerCase().includes(searchLower)
+    );
+  });
+
+  const handleConfirmAssignment = () => {
+    if (!projectId) {
+      Alert.alert('Error', 'Project ID is missing');
+      return;
+    }
+
+    if (selected.length === 0) {
+      Alert.alert('Error', 'Please select at least one engineer');
+      return;
+    }
+
+    assignEmployees.mutate(
+      { projectId, employeeIds: selected },
+      {
+        onSuccess: () => {
+          Alert.alert('Success', 'Engineers assigned successfully!');
+          router.back();
+        },
+        onError: (error) => {
+          Alert.alert('Error', getErrorMessage(error));
+        },
+      }
+    );
+  };
 
   return (
     <>
@@ -82,40 +117,58 @@ export default function AssignEngineersScreen(): React.ReactElement {
           </Text>
         </View>
 
-        {/* Engineer list */}
-        <FlatList
-          data={filtered}
-          keyExtractor={(item) => item.id}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.list}
-          ItemSeparatorComponent={() => <View style={styles.sep} />}
-          renderItem={({ item }) => {
-            const isSelected = selected.includes(item.id);
-            return (
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => toggle(item.id)}
-                style={[styles.row, isSelected && styles.rowSelected]}
-              >
-                <Avatar initials={item.initials} size="md" />
-                <View style={styles.rowText}>
-                  <Text style={styles.name}>{item.name}</Text>
-                  <Text style={styles.role}>{item.role}</Text>
-                </View>
-                {/* Selection indicator — filled navy with checkmark when selected */}
-                <View style={[styles.indicator, isSelected && styles.indicatorSelected]}>
-                  {isSelected && <Text style={styles.checkmark}>✓</Text>}
-                </View>
-              </TouchableOpacity>
-            );
-          }}
-        />
+        {/* Loading state */}
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+            <Text style={styles.loadingText}>Loading engineers...</Text>
+          </View>
+        ) : filtered.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>
+              {search ? 'No engineers found matching your search' : 'No engineers available'}
+            </Text>
+          </View>
+        ) : (
+          <FlatList
+            data={filtered}
+            keyExtractor={(item) => item.id}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.list}
+            ItemSeparatorComponent={() => <View style={styles.sep} />}
+            renderItem={({ item }) => {
+              const isSelected = selected.includes(item.id);
+              const initials = `${item.firstName[0]}${item.lastName[0]}`.toUpperCase();
+              const fullName = `${item.firstName} ${item.lastName}`;
+              const role = item.designation ?? 'Employee';
+
+              return (
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => toggle(item.id)}
+                  style={[styles.row, isSelected && styles.rowSelected]}
+                >
+                  <Avatar initials={initials} size="md" />
+                  <View style={styles.rowText}>
+                    <Text style={styles.name}>{fullName}</Text>
+                    <Text style={styles.role}>{role}</Text>
+                  </View>
+                  {/* Selection indicator — filled navy with checkmark when selected */}
+                  <View style={[styles.indicator, isSelected && styles.indicatorSelected]}>
+                    {isSelected && <Text style={styles.checkmark}>✓</Text>}
+                  </View>
+                </TouchableOpacity>
+              );
+            }}
+          />
+        )}
 
         {/* Confirm button — fixed above safe-area bottom */}
         <View style={styles.footer}>
           <Button
-            label="Confirm Assignment"
-            onPress={() => router.back()}
+            label={assignEmployees.isPending ? 'Assigning...' : 'Confirm Assignment'}
+            onPress={handleConfirmAssignment}
+            disabled={assignEmployees.isPending || selected.length === 0}
           />
         </View>
       </SafeAreaView>
@@ -246,5 +299,30 @@ const styles = StyleSheet.create({
     borderTopColor: Colors.border,
     paddingHorizontal: Spacing[4],
     paddingVertical: Spacing[3],
+  },
+
+  // Loading and empty states
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing[3],
+  },
+  loadingText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.base,
+    color: Colors.textSecondary,
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing[6],
+  },
+  emptyText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.base,
+    color: Colors.textSecondary,
+    textAlign: 'center',
   },
 });

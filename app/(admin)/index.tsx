@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
+import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card } from '../../src/components/ui/Card';
@@ -16,6 +16,8 @@ import {
 } from '../../src/constants/tokens';
 import type { BadgeVariant } from '../../src/types';
 import { useEmployeeCount, useProjectCount } from '../../src/hooks/useAdminDashboard';
+import { useAllRequests, useUpdateRequestStatus } from '../../src/hooks/useAdminRequests';
+import { getErrorMessage } from '../../src/services/api/errorHandler';
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
@@ -152,6 +154,8 @@ export default function AdminDashboardScreen(): React.ReactElement {
   // Fetch API data for counts
   const { data: employeeData, isLoading: isLoadingEmployees } = useEmployeeCount();
   const { data: projectData, isLoading: isLoadingProjects } = useProjectCount();
+  const { data: pendingRequests } = useAllRequests('PENDING');
+  const updateRequestStatus = useUpdateRequestStatus();
 
   // Build KPIs array with real data
   const KPIS: Kpi[] = [
@@ -301,33 +305,77 @@ export default function AdminDashboardScreen(): React.ReactElement {
             </TouchableOpacity>
           </Card>
 
-          {/* ── Action Required — PATCH: renamed, badge fix, button fix ──── */}
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionTitleRow}>
-              <Icon name="warning" size="md" color={Colors.danger} />
-              <Text style={styles.sectionTitle}>Action Required</Text>
-            </View>
-            <View style={styles.countBadge}>
-              <Text style={styles.countBadgeText}>6 New</Text>
-            </View>
-          </View>
-          {PENDING.map((req) => (
-            <TouchableOpacity
-              key={req.id}
-              activeOpacity={0.9}
-              onPress={() => router.push('/(admin)/requests' as never)}
-            >
-              <Card style={styles.pendingCard}>
-                {/* Top: type (bold) left + time (muted) right — no priority badge */}
-                <View style={styles.pendingTop}>
-                  <Text style={styles.pendingType}>{req.type}</Text>
-                  <Text style={styles.pendingTime}>{req.timeAgo}</Text>
+          {/* ── Action Required — Real pending requests from API ──────── */}
+          {pendingRequests && pendingRequests.length > 0 && (
+            <>
+              <View style={styles.sectionHeader}>
+                <View style={styles.sectionTitleRow}>
+                  <Icon name="warning" size="md" color={Colors.danger} />
+                  <Text style={styles.sectionTitle}>Action Required</Text>
                 </View>
-                <Text style={styles.pendingDetail}>{req.detail}</Text>
-                <ActionButtons onReview={() => router.push('/(admin)/requests' as never)} />
-              </Card>
-            </TouchableOpacity>
-          ))}
+                <View style={styles.countBadge}>
+                  <Text style={styles.countBadgeText}>{pendingRequests.length} New</Text>
+                </View>
+              </View>
+              {pendingRequests.slice(0, 3).map((req) => {
+                const requesterName = req.user ? `${req.user.firstName} ${req.user.lastName}` : 'Unknown';
+                const typeLabel = req.type === 'MATERIAL' ? 'Material Request' : 'Issue Report';
+
+                return (
+                  <TouchableOpacity
+                    key={req.id}
+                    activeOpacity={0.9}
+                    onPress={() => router.push('/(admin)/requests' as never)}
+                  >
+                    <Card style={styles.pendingCard}>
+                      <View style={styles.pendingTop}>
+                        <Text style={styles.pendingType}>{typeLabel}</Text>
+                        <Text style={styles.pendingTime}>{requesterName}</Text>
+                      </View>
+                      <Text style={styles.pendingDetail}>{req.subject || req.description}</Text>
+                      <View style={styles.actionRow}>
+                        <TouchableOpacity
+                          activeOpacity={0.85}
+                          style={styles.approveBtn}
+                          onPress={() => {
+                            updateRequestStatus.mutate({ id: req.id, status: 'APPROVED' }, {
+                              onError: (error) => {
+                                const message = getErrorMessage(error);
+                                Alert.alert('Error', message);
+                              },
+                            });
+                          }}
+                          disabled={updateRequestStatus.isPending}
+                        >
+                          {updateRequestStatus.isPending ? (
+                            <ActivityIndicator size="small" color={Colors.textOnPrimary} />
+                          ) : (
+                            <Text style={styles.approveText}>Approve</Text>
+                          )}
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          activeOpacity={0.85}
+                          style={styles.reviewBtn}
+                          onPress={() => router.push('/(admin)/requests' as never)}
+                        >
+                          <Text style={styles.reviewText}>Review</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </Card>
+                  </TouchableOpacity>
+                );
+              })}
+              {pendingRequests.length > 3 && (
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={() => router.push('/(admin)/requests' as never)}
+                  style={styles.viewAllBtn}
+                >
+                  <Text style={styles.viewAllBtnText}>View All Requests</Text>
+                </TouchableOpacity>
+              )}
+            </>
+          )}
         </ScrollView>
 
         <AdminBottomNav activeIndex={0} />
@@ -620,5 +668,19 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.medium,
     fontSize: FontSize.sm,
     color: Colors.textPrimary,
+  },
+  viewAllBtn: {
+    height: 44,
+    borderRadius: BorderRadius.btn,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  viewAllBtnText: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.md,
+    color: Colors.primary,
   },
 });

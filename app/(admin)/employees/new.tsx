@@ -64,7 +64,7 @@ export default function AddEmployeeScreen(): React.ReactElement {
         onSuccess: (result) => {
           Alert.alert(
             'Employee Created',
-            `Employee: ${result.user.firstName} ${result.user.lastName}\nEmployee Code: ${result.user.employeeCode}\n\nAccount created with PENDING status. Activate the employee to generate their temporary password.`,
+            `Employee: ${result.firstName} ${result.lastName}\nEmployee Code: ${result.employeeCode}\n\nAccount created with PENDING status. Activate the employee to generate their temporary password.`,
             [
               {
                 text: 'OK',

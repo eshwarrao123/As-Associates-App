@@ -121,7 +121,7 @@ export async function changePassword(
   currentPassword: string,
   newPassword: string,
 ): Promise<ChangePasswordResponse> {
-  const response = await apiClient.patch<ChangePasswordResponse>(
+  const response = await apiClient.post<ChangePasswordResponse>(
     '/auth/change-password',
     {
       currentPassword,

@@ -48,7 +48,7 @@ interface AttendanceCalendarResponse {
  */
 export async function checkIn(projectId: string): Promise<CheckInResponse> {
   const response = await apiClient.post<CheckInResponse>(
-    '/attendance/check-in',
+    '/attendance/clock-in',
     { projectId },
   );
   return response.data;
@@ -76,11 +76,20 @@ export async function getMyAttendanceCalendar(
   month: number,
   year: number,
 ): Promise<AttendanceCalendarResponse> {
+  // Calculate first and last day of the month
+  const firstDay = new Date(year, month - 1, 1);
+  const lastDay = new Date(year, month, 0);
+
+  // Format as YYYY-MM-DD
+  const startDate = firstDay.toISOString().split('T')[0];
+  const endDate = lastDay.toISOString().split('T')[0];
+
   const response = await apiClient.get<AttendanceCalendarResponse>(
     `/attendance/my`,
     {
       params: {
-        month: `${year}-${String(month).padStart(2, '0')}`,
+        startDate,
+        endDate,
       },
     },
   );

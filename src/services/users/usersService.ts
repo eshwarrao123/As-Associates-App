@@ -62,15 +62,15 @@ export async function getUsers(page: number = 1, limit: number = 10) {
  * @param id - User ID
  * @returns User detail
  */
-export async function getUserById(id: string) {
-  const response = await apiClient.get<{ data: UserResponse }>(`/users/${id}`);
-  return response.data.data;
+export async function getUserById(id: string): Promise<UserResponse> {
+  const response = await apiClient.get<UserResponse>(`/users/${id}`);
+  return response.data;
 }
 
 /**
  * Creates a new employee.
  * @param data - Employee creation data
- * @returns Created employee (wrapped in { user })
+ * @returns Created employee
  */
 export async function createEmployee(data: {
   firstName: string;
@@ -81,10 +81,8 @@ export async function createEmployee(data: {
   designation?: string;
   department?: string;
   employeeCode?: string;
-}) {
-  const response = await apiClient.post<{
-    user: UserResponse;
-  }>('/users', data);
+}): Promise<UserResponse> {
+  const response = await apiClient.post<UserResponse>('/users', data);
   return response.data;
 }
 
@@ -133,7 +131,7 @@ export async function updateEmployeeStatus(
  */
 export async function getEmployeeProjects(id: string) {
   const response = await apiClient.get<{ data: ProjectResponse[] }>(
-    `/users/${id}/projects`,
+    `/projects?userId=${id}`,
   );
   return response.data.data;
 }
