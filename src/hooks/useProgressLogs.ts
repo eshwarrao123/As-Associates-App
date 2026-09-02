@@ -24,6 +24,21 @@ export function useCreateProgressLog() {
     mutationFn: progressLogsService.createProgressLog,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.progressLogs.my });
+      // Also invalidate admin progress logs so admin sees the new entry
+      queryClient.invalidateQueries({ queryKey: queryKeys.progressLogs.admin() });
     },
+  });
+}
+
+/**
+ * Hook to fetch all progress logs (admin view).
+ * @param projectId - Optional project filter
+ */
+export function useAdminProgressLogs(projectId?: string) {
+  return useQuery({
+    queryKey: queryKeys.progressLogs.admin(projectId),
+    queryFn: () => progressLogsService.getAdminProgressLogs(
+      projectId ? { projectId } : undefined,
+    ),
   });
 }

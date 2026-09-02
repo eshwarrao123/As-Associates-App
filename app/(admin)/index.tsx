@@ -60,8 +60,9 @@ export default function AdminDashboardScreen(): React.ReactElement {
   const updateRequestStatus = useUpdateRequestStatus();
 
   // Calculate ongoing projects count from real data
+  // Backend returns status: 'ONGOING' | 'COMPLETED' | 'UPCOMING' | 'ON_HOLD'
   const ongoingProjectsCount = allProjectsData?.data.filter(
-    (p) => p.status === 'ACTIVE' || p.status === 'IN_PROGRESS'
+    (p) => p.status === 'ONGOING'
   ).length ?? 0;
 
   // Map real projects to UI format (top 3 for dashboard preview)

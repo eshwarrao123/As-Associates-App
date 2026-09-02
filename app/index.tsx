@@ -23,7 +23,7 @@ export default function RootIndex(): React.ReactElement {
       if (!isAuthenticated) {
         router.replace('/(auth)/login');
       } else {
-        router.replace(role === 'admin' ? '/(admin)' : '/(employee)');
+        router.replace(role === 'ADMIN' ? '/(admin)' : '/(employee)');
       }
     }
   }, [showSplash, isHydrated, isAuthenticated, role, router]);

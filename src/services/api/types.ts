@@ -13,9 +13,10 @@ export class ApiError extends Error {
     this.error = error;
 
     // Maintains proper stack trace for where our error was thrown (V8 only)
-    if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, ApiError);
-    }
+    const ErrorWithCapture = Error as typeof Error & {
+      captureStackTrace?: (target: object, constructor: Function) => void;
+    };
+    ErrorWithCapture.captureStackTrace?.(this, ApiError);
   }
 }
 

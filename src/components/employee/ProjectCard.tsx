@@ -35,6 +35,7 @@ const PROGRESS_FILL: Record<Project['status'], string> = {
   ongoing: Colors.primary,
   completed: Colors.success,
   onhold: Colors.warning,
+  upcoming: Colors.info,
   pending: Colors.warning,
   approved: Colors.success,
   rejected: Colors.danger,

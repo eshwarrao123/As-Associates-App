@@ -39,6 +39,18 @@ interface UserResponse {
   updatedAt: string;
 }
 
+interface UserDetailResponse extends UserResponse {
+  activeProjectCount?: number;
+  attendanceRate?: number;
+  lastLoginAt?: string;
+  _count?: {
+    assignments: number;
+    attendanceLogs: number;
+    progressLogs: number;
+    uploads: number;
+  };
+}
+
 // ─── User Service Functions ───────────────────────────────────────────────────
 
 /**
@@ -75,12 +87,12 @@ export async function getUsers(
 }
 
 /**
- * Fetches a single user by ID.
+ * Fetches a single user by ID with extended admin details.
  * @param id - User ID
- * @returns User detail
+ * @returns User detail with counts and admin-specific fields
  */
-export async function getUserById(id: string): Promise<UserResponse> {
-  const response = await apiClient.get<UserResponse>(`/users/${id}`);
+export async function getUserById(id: string): Promise<UserDetailResponse> {
+  const response = await apiClient.get<UserDetailResponse>(`/users/${id}`);
   return response.data;
 }
 
@@ -163,6 +175,6 @@ interface ProjectResponse {
   description?: string;
   startDate: string;
   endDate?: string;
-  status: 'ACTIVE' | 'COMPLETED' | 'ON_HOLD';
+  status: 'ONGOING' | 'COMPLETED' | 'ON_HOLD' | 'UPCOMING';
   progressPercent: number;
 }

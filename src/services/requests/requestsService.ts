@@ -31,6 +31,12 @@ export interface RequestResponse {
     lastName: string;
     employeeCode: string;
   };
+  project?: {
+    id: string;
+    name: string;
+    location: string;
+    clientName: string;
+  };
   reviewedBy?: {
     id: string;
     firstName: string;

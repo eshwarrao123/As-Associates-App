@@ -31,12 +31,14 @@ import { getErrorMessage } from '../../../src/services/api/errorHandler';
 // Map project status to BadgeVariant
 function mapProjectStatusToBadge(status: string): BadgeVariant {
   switch (status) {
-    case 'ACTIVE':
-      return 'approved';
+    case 'ONGOING':
+      return 'ongoing';
     case 'COMPLETED':
       return 'completed';
     case 'ON_HOLD':
-      return 'pending';
+      return 'onhold';
+    case 'UPCOMING':
+      return 'upcoming';
     default:
       return 'pending';
   }
@@ -110,12 +112,17 @@ export default function EmployeeDetailScreen(): React.ReactElement {
   const initials = getInitials(employee.firstName, employee.lastName);
   const fullName = `${employee.firstName} ${employee.lastName}`;
 
+  // Extract counts from backend response
+  const projectCount = employee.activeProjectCount ?? projects?.length ?? 0;
+  const attendanceRate = employee.attendanceRate ? `${Math.round(employee.attendanceRate)}%` : 'N/A';
+  const uploadCount = employee._count?.uploads ?? 0;
+
   // Map projects to display format
   const assignedProjects = projects?.slice(0, 3).map((p) => ({
     id: p.id,
     name: p.name,
     status: mapProjectStatusToBadge(p.status),
-    statusLabel: p.status === 'ACTIVE' ? 'Active' : p.status === 'COMPLETED' ? 'Completed' : 'On Hold',
+    statusLabel: p.status === 'ONGOING' ? 'Ongoing' : p.status === 'COMPLETED' ? 'Completed' : p.status === 'ON_HOLD' ? 'On Hold' : p.status === 'UPCOMING' ? 'Upcoming' : p.status,
   })) ?? [];
 
   const handleStatusToggle = () => {
@@ -186,19 +193,19 @@ export default function EmployeeDetailScreen(): React.ReactElement {
           {/* ── Section 2: Stats row ────────────────────────────────────── */}
           <Card style={styles.statsRow}>
             <View style={styles.statCell}>
-              <Text style={styles.statValue}>{projects?.length ?? 0}</Text>
+              <Text style={styles.statValue}>{projectCount}</Text>
               <Text style={styles.statLabel}>Projects</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statCell}>
-              <Text style={[styles.statValue, { color: Colors.textMuted }]}>
-                N/A
+              <Text style={[styles.statValue, typeof attendanceRate === 'string' && attendanceRate !== 'N/A' ? { color: attendanceColor(attendanceRate) } : { color: Colors.textMuted }]}>
+                {attendanceRate}
               </Text>
               <Text style={styles.statLabel}>Attendance</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statCell}>
-              <Text style={styles.statValue}>0</Text>
+              <Text style={styles.statValue}>{uploadCount}</Text>
               <Text style={styles.statLabel}>Uploads</Text>
             </View>
           </Card>

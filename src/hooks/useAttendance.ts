@@ -32,6 +32,16 @@ export function useCheckIn() {
       void queryClient.invalidateQueries({
         queryKey: queryKeys.attendance.calendar(month, year),
       });
+
+      // Invalidate auth.me to refresh attendance count in profile
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.auth.me,
+      });
+
+      // Invalidate admin attendance queries (if admin is viewing)
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.attendance.adminList(),
+      });
     },
   });
 }
@@ -53,6 +63,16 @@ export function useCheckOut() {
       // Invalidate current month's calendar to refresh
       void queryClient.invalidateQueries({
         queryKey: queryKeys.attendance.calendar(month, year),
+      });
+
+      // Invalidate auth.me to refresh attendance count in profile
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.auth.me,
+      });
+
+      // Invalidate admin attendance queries (if admin is viewing)
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.attendance.adminList(),
       });
     },
   });

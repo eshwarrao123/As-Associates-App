@@ -65,6 +65,7 @@ export const IconMap = {
   locationOutline: 'map-marker-outline',
   camera: 'camera',
   photo: 'image',
+  play: 'play',
   document: 'file-document-outline',
   calendar: 'calendar',
   calendarOutline: 'calendar-blank-outline',

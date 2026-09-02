@@ -3,6 +3,7 @@
   "compilerOptions": {
     "strict": true,
     "noImplicitAny": true,
+    "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "paths": {
       "@/*": [
@@ -35,5 +36,8 @@
     "expo-env.d.ts",
     "nativewind-env.d.ts",
     ".expo/types/**/*.ts"
+  ],
+  "exclude": [
+    "backend"
   ]
 }

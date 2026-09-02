@@ -95,7 +95,7 @@ export default function ChangePasswordScreen(): React.ReactElement {
       }
 
       // Navigate to the correct home screen based on role
-      if (user?.role === 'admin') {
+      if (user?.role === 'ADMIN') {
         router.replace('/(admin)');
       } else {
         router.replace('/(employee)');
@@ -107,23 +107,26 @@ export default function ChangePasswordScreen(): React.ReactElement {
     }
   };
 
+  // Whether this is a forced password change (first login) or voluntary
+  const isForced = user?.mustChangePassword === true;
+
   return (
     <>
       <Stack.Screen
         options={{
-          headerShown: !user?.mustChangePassword,
-          headerTitle: 'Change Password',
-          headerStyle: {
-            backgroundColor: Colors.primary,
-          },
-          headerTintColor: Colors.textOnPrimary,
-          headerTitleStyle: {
-            fontFamily: FontFamily.bold,
-            fontSize: FontSize.lg,
-          },
+          headerShown: false,
         }}
       />
       <SafeAreaView style={styles.safeArea}>
+        {/* Custom header — shown only for voluntary password change */}
+        {!isForced && (
+          <View style={styles.header}>
+            <TouchableOpacity hitSlop={12} onPress={() => router.back()}>
+              <Icon name="back" size="lg" color={Colors.textOnPrimary} />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Change Password</Text>
+          </View>
+        )}
         <KeyboardAvoidingView
           style={styles.flex}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -226,6 +229,19 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  header: {
+    backgroundColor: Colors.primary,
+    height: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing[3],
+    paddingHorizontal: Spacing[4],
+  },
+  headerTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.lg,
+    color: Colors.textOnPrimary,
   },
   flex: {
     flex: 1,

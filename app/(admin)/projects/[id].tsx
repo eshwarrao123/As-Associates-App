@@ -10,6 +10,7 @@ import { ProgressBar } from '../../../src/components/ui/ProgressBar';
 import { AdminBottomNav } from '../../../src/components/ui/AdminBottomNav';
 import { Icon } from '../../../src/components/ui/Icon';
 import { useAdminProject, useDeleteProject } from '../../../src/hooks/useAdminProjects';
+import { useAdminProgressLogs } from '../../../src/hooks/useProgressLogs';
 import { getErrorMessage } from '../../../src/services/api/errorHandler';
 import {
   BorderRadius,
@@ -53,6 +54,7 @@ export default function ProjectDetailScreen(): React.ReactElement {
   const [tab, setTab] = useState<Tab>('Overview');
 
   const { data: project, isLoading, error } = useAdminProject(id ?? '');
+  const { data: progressLogs, isLoading: isLoadingProgress } = useAdminProgressLogs(id);
   const deleteProject = useDeleteProject();
 
   const handleDelete = () => {
@@ -106,7 +108,7 @@ export default function ProjectDetailScreen(): React.ReactElement {
     { label: 'Client', value: project.client },
     { label: 'Location', value: project.location },
     { label: 'Start Date', value: formatDate(project.startDate) },
-    { label: 'End Date', value: project.endDate ? formatDate(project.endDate) : 'Not set' },
+    { label: 'End Date', value: project.targetEnd && project.targetEnd !== 'Not set' ? formatDate(project.targetEnd) : 'Not set' },
     { label: 'Scope', value: project.scope },
   ];
 
@@ -226,8 +228,37 @@ export default function ProjectDetailScreen(): React.ReactElement {
 
           {tab === 'Progress' && (
             <Card style={styles.section}>
-              <Text style={styles.sectionLabel}>STAGE PROGRESS</Text>
-              <Text style={styles.emptyText}>Stage progress data not yet available</Text>
+              <Text style={styles.sectionLabel}>DAILY PROGRESS LOGS</Text>
+              {isLoadingProgress ? (
+                <View style={styles.progressLoadingRow}>
+                  <ActivityIndicator size="small" color={Colors.primary} />
+                </View>
+              ) : progressLogs && progressLogs.length > 0 ? (
+                progressLogs.slice(0, 10).map((log, i) => {
+                  const logDate = new Date(log.date || log.createdAt);
+                  const dateStr = logDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+                  const userName = log.user ? `${log.user.firstName} ${log.user.lastName}` : 'Unknown';
+                  return (
+                    <View
+                      key={log.id}
+                      style={[styles.progressLogRow, i < Math.min(progressLogs.length, 10) - 1 && styles.metaBorder]}
+                    >
+                      <View style={styles.progressLogHeader}>
+                        <Text style={styles.progressLogTitle} numberOfLines={1}>{log.title}</Text>
+                        {log.workStage && (
+                          <View style={styles.stageChip}>
+                            <Text style={styles.stageChipText}>{log.workStage}</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={styles.progressLogDesc} numberOfLines={2}>{log.description}</Text>
+                      <Text style={styles.progressLogMeta}>{userName} · {dateStr}</Text>
+                    </View>
+                  );
+                })
+              ) : (
+                <Text style={styles.emptyText}>No progress logs submitted for this project yet.</Text>
+              )}
             </Card>
           )}
 
@@ -408,6 +439,49 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.medium,
     fontSize: FontSize.sm,
     color: Colors.primary,
+  },
+  // Progress log rows
+  progressLoadingRow: {
+    paddingVertical: Spacing[4],
+    alignItems: 'center',
+  },
+  progressLogRow: {
+    paddingBottom: Spacing[3],
+    gap: Spacing[1],
+  },
+  progressLogHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing[2],
+  },
+  progressLogTitle: {
+    flex: 1,
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.md,
+    color: Colors.textPrimary,
+  },
+  stageChip: {
+    backgroundColor: withAlpha(Colors.accent, 0.12),
+    borderRadius: BorderRadius.badge,
+    paddingHorizontal: Spacing[2],
+    paddingVertical: 2,
+  },
+  stageChipText: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.xs,
+    color: Colors.accent,
+  },
+  progressLogDesc: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+    lineHeight: 18,
+  },
+  progressLogMeta: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
   },
 
   // Request rows

@@ -13,6 +13,7 @@ interface ProjectResponse {
   startDate: string; // YYYY-MM-DD
   endDate?: string; // YYYY-MM-DD
   status: 'ONGOING' | 'COMPLETED' | 'UPCOMING' | 'ON_HOLD';
+  progressPercent?: number;
 }
 
 interface ProjectDetailResponse extends ProjectResponse {

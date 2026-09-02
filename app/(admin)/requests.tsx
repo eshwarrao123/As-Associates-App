@@ -152,6 +152,7 @@ export default function AdminRequestsScreen(): React.ReactElement {
             const userName = item.user
               ? `${item.user.firstName} ${item.user.lastName}`
               : 'Unknown';
+            const projectName = item.project?.name ?? null;
             const badgeVariant = mapStatusToBadge(item.status);
 
             return (
@@ -171,7 +172,7 @@ export default function AdminRequestsScreen(): React.ReactElement {
                 <Text style={styles.subject}>{item.description}</Text>
                 {/* Subtitle — body-md (14px/400) */}
                 <Text style={styles.meta}>
-                  {userName} · {formatDate(item.createdAt)}
+                  {userName}{projectName ? ` · ${projectName}` : ''} · {formatDate(item.createdAt)}
                 </Text>
 
                 {item.status === 'PENDING' ? (

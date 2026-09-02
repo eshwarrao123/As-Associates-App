@@ -17,6 +17,7 @@ import { getMe } from '../src/services/auth/authService';
 import { clearTokens } from '../src/services/api/tokenStore';
 import ErrorBoundary from '../src/components/ErrorBoundary';
 import { queryClient } from '../src/services/api/queryClient';
+import type { UserRole } from '../src/types';
 
 // ─── Loading screen ───────────────────────────────────────────────────────────
 
@@ -78,7 +79,7 @@ function AuthGuard(): React.ReactElement | null {
             id: userData.id,
             name: `${userData.firstName} ${userData.lastName}`,
             email: userData.email,
-            role: userData.role as 'admin' | 'employee',
+            role: userData.role as UserRole,
             department: userData.department,
             avatarInitials: `${userData.firstName[0]}${userData.lastName[0]}`.toUpperCase(),
           };
@@ -100,10 +101,9 @@ function AuthGuard(): React.ReactElement | null {
   useEffect(() => {
     if (!isHydrated) return;
     if (isCheckingAuth) return;
-    if (segmentsRef.current.length === 0) return;
+    if (!segmentsRef.current[0]) return;
 
     const inAuthGroup = segmentsRef.current[0] === '(auth)';
-    const normalizedRole = role?.toLowerCase();
 
     if (!isAuthenticated && !inAuthGroup) {
       router.replace('/(auth)/login');
@@ -114,7 +114,7 @@ function AuthGuard(): React.ReactElement | null {
         return;
       }
 
-      router.replace(normalizedRole === 'admin' ? '/(admin)' : '/(employee)');
+      router.replace(role === 'ADMIN' ? '/(admin)' : '/(employee)');
     }
   }, [isAuthenticated, isHydrated, isCheckingAuth, role, router, user?.mustChangePassword]);
 

@@ -128,7 +128,7 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
         role: response.user.role as UserRole,
         department: response.user.department,
         avatarInitials: `${response.user.firstName[0]}${response.user.lastName[0]}`.toUpperCase(),
-        mustChangePassword: response.user.mustChangePassword ?? false,
+        mustChangePassword: response.mustChangePassword ?? false,
       };
 
       // Persist user to AsyncStorage for hydration

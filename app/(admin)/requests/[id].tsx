@@ -92,7 +92,7 @@ export default function RequestDetailScreen(): React.ReactElement {
           {
             text: 'Reject',
             style: 'destructive',
-            onPress: (reviewNote) => {
+            onPress: (reviewNote?: string) => {
               updateRequestStatus.mutate(
                 { id: request.id, status: 'REJECTED', reviewNote },
                 {
@@ -183,6 +183,8 @@ export default function RequestDetailScreen(): React.ReactElement {
     ? `${request.user.firstName} ${request.user.lastName}`
     : 'Unknown';
   const userCode = request.user?.employeeCode || 'N/A';
+  const projectName = request.project?.name ?? null;
+  const projectLocation = request.project?.location ?? null;
   const badgeVariant = mapStatusToBadge(request.status);
   const isPending = request.status === 'PENDING';
   const isProcessing = updateRequestStatus.isPending;
@@ -221,6 +223,12 @@ export default function RequestDetailScreen(): React.ReactElement {
                 <Text style={styles.metaLabel}>Submitted by</Text>
                 <Text style={styles.metaValue}>{userName} · {userCode}</Text>
               </View>
+              {projectName && (
+                <View style={styles.metaRow}>
+                  <Text style={styles.metaLabel}>Project</Text>
+                  <Text style={styles.metaValue}>{projectName}{projectLocation ? ` · ${projectLocation}` : ''}</Text>
+                </View>
+              )}
               <View style={styles.metaRow}>
                 <Text style={styles.metaLabel}>Date</Text>
                 <Text style={styles.metaValue}>{formatDate(request.createdAt)}</Text>
