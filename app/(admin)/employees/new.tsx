@@ -59,6 +59,7 @@ export default function AddEmployeeScreen(): React.ReactElement {
         lastName: lastName.trim(),
         email: email.trim(),
         phone: phone.trim(),
+        designation: designation.trim() || undefined,
       },
       {
         onSuccess: (result) => {

@@ -34,8 +34,8 @@ export interface RequestResponse {
   project?: {
     id: string;
     name: string;
-    location: string;
-    clientName: string;
+    location?: string;
+    clientName?: string;
   };
   reviewedBy?: {
     id: string;

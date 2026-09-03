@@ -11,6 +11,7 @@ import { Card } from '../../src/components/ui/Card';
 import { Icon } from '../../src/components/ui/Icon';
 import { BottomNav } from '../../src/components/ui/BottomNav';
 import { Colors, FontFamily, FontSize, Spacing, BorderRadius } from '../../src/constants/tokens';
+import { toDateKey, getTodayKey } from '../../src/utils/date';
 
 // ─── Calendar model ───────────────────────────────────────────────────────────
 
@@ -83,7 +84,7 @@ export default function AttendanceScreen(): React.ReactElement {
     const map = new Map<string, { status: DayStatus; checkInTime?: string }>();
     if (attendanceData?.data) {
       attendanceData.data.forEach((record) => {
-        const day = new Date(record.date).getDate();
+        const day = Number(toDateKey(record.date).slice(8, 10));
         map.set(String(day), {
           status: mapApiStatusToDayStatus(record.status),
           checkInTime: record.checkInTime,
@@ -106,6 +107,27 @@ export default function AttendanceScreen(): React.ReactElement {
     ...Array<null>(firstDayOfMonth).fill(null),
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
   ];
+
+  // Compute real attendance stats from calendar data
+  // Present = count of PRESENT or HALF_DAY records
+  const presentCount = attendanceData?.data.filter(
+    (r) => r.status === 'PRESENT' || r.status === 'HALF_DAY'
+  ).length ?? 0;
+
+  // Working days = weekdays (Mon-Fri) from 1st through today (if viewing current month)
+  const isCurrentMonth = currentMonth === now.getMonth() + 1 && currentYear === now.getFullYear();
+  const lastDayToCount = isCurrentMonth ? today : daysInMonth;
+  let workingDaysCount = 0;
+  for (let day = 1; day <= lastDayToCount; day++) {
+    const date = new Date(currentYear, currentMonth - 1, day);
+    const dayOfWeek = date.getDay();
+    if (dayOfWeek >= 1 && dayOfWeek <= 5) { // Monday-Friday
+      workingDaysCount++;
+    }
+  }
+
+  // Absent = max(0, working days - present)
+  const absentCount = Math.max(0, workingDaysCount - presentCount);
 
   const handleCheckIn = () => {
     // Use the first project as default - in a real app, user might select project
@@ -285,21 +307,21 @@ export default function AttendanceScreen(): React.ReactElement {
           <Card noPadding style={styles.statsCard}>
             <View style={styles.statCell}>
               <Text style={styles.statValue}>
-                {attendanceData?.summary?.present ?? 0}
+                {presentCount}
               </Text>
               <Text style={styles.statLabel}>Present</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statCell}>
               <Text style={styles.statValue}>
-                {attendanceData?.summary?.absent ?? 0}
+                {absentCount}
               </Text>
               <Text style={styles.statLabel}>Absent</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statCell}>
               <Text style={styles.statValue}>
-                {attendanceData?.summary?.totalWorkingDays ?? 0}
+                {workingDaysCount}
               </Text>
               <Text style={styles.statLabel}>Working Days</Text>
             </View>

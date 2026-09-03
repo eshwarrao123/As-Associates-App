@@ -27,12 +27,14 @@ import { useEmployee, useEmployeeProjects } from '../../../../src/hooks/useEmplo
 // Map project status to BadgeVariant
 function mapProjectStatusToBadge(status: string): BadgeVariant {
   switch (status) {
-    case 'ACTIVE':
-      return 'approved';
+    case 'ONGOING':
+      return 'ongoing';
     case 'COMPLETED':
       return 'completed';
     case 'ON_HOLD':
-      return 'pending';
+      return 'onhold';
+    case 'UPCOMING':
+      return 'upcoming';
     default:
       return 'pending';
   }
@@ -41,12 +43,14 @@ function mapProjectStatusToBadge(status: string): BadgeVariant {
 // Get status label
 function getStatusLabel(status: string): string {
   switch (status) {
-    case 'ACTIVE':
-      return 'Active';
+    case 'ONGOING':
+      return 'Ongoing';
     case 'COMPLETED':
       return 'Completed';
     case 'ON_HOLD':
       return 'On Hold';
+    case 'UPCOMING':
+      return 'Upcoming';
     default:
       return 'Unknown';
   }
@@ -103,25 +107,6 @@ export default function EmployeeProjectsScreen(): React.ReactElement {
                       variant={mapProjectStatusToBadge(p.status)}
                       label={getStatusLabel(p.status)}
                     />
-                  </View>
-
-                  <View style={styles.metaRow}>
-                    <Icon name="clientOutline" size="sm" color={Colors.textMuted} />
-                    <Text style={styles.metaText}>{p.clientName}</Text>
-                  </View>
-                  <View style={styles.metaRow}>
-                    <Icon name="locationOutline" size="sm" color={Colors.textMuted} />
-                    <Text style={styles.metaText}>{p.location}</Text>
-                  </View>
-
-                  <View style={styles.progressRow}>
-                    <ProgressBar
-                      value={p.progressPercent}
-                      showLabel={false}
-                      fillColor={Colors.primary}
-                      style={styles.bar}
-                    />
-                    <Text style={styles.pct}>{p.progressPercent}%</Text>
                   </View>
                 </Card>
               ))}

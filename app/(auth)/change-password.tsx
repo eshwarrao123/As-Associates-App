@@ -9,7 +9,7 @@ import {
   BackHandler,
   TouchableOpacity,
 } from 'react-native';
-import { useRouter, useFocusEffect, Stack } from 'expo-router';
+import { useRouter, useFocusEffect, Stack, useLocalSearchParams } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -36,6 +36,7 @@ type ChangePasswordFormData = z.infer<typeof changePasswordSchema>;
 
 export default function ChangePasswordScreen(): React.ReactElement {
   const router = useRouter();
+  const { mode } = useLocalSearchParams<{ mode?: string }>();
   const { user, setUser } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,10 +62,13 @@ export default function ChangePasswordScreen(): React.ReactElement {
     }
   }, [newPassword, confirmPassword, error]);
 
-  // Block back navigation when mustChangePassword is true
+  // Whether this is a forced password change (first login) or voluntary
+  const isForced = mode !== 'normal' || user?.mustChangePassword === true;
+
+  // Block back navigation when forced
   useFocusEffect(
     React.useCallback(() => {
-      if (user?.mustChangePassword) {
+      if (isForced) {
         const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
           // Block Android back button
           return true;
@@ -72,7 +76,7 @@ export default function ChangePasswordScreen(): React.ReactElement {
 
         return () => backHandler.remove();
       }
-    }, [user?.mustChangePassword])
+    }, [isForced])
   );
 
   const onSubmit = async (data: ChangePasswordFormData): Promise<void> => {
@@ -94,11 +98,18 @@ export default function ChangePasswordScreen(): React.ReactElement {
         setUser(updatedUser);
       }
 
-      // Navigate to the correct home screen based on role
-      if (user?.role === 'ADMIN') {
-        router.replace('/(admin)');
+      // Navigate based on mode
+      if (isForced) {
+        // Forced flow: navigate to role home
+        if (user?.role === 'ADMIN') {
+          router.replace('/(admin)');
+        } else {
+          router.replace('/(employee)');
+        }
       } else {
-        router.replace('/(employee)');
+        // Normal flow: return to opener (Settings or Profile)
+        const opener = user?.role === 'ADMIN' ? '/(admin)/settings' : '/(employee)/profile';
+        router.replace(opener as any);
       }
     } catch (err) {
       const errorMessage = getErrorMessage(err);
@@ -107,8 +118,6 @@ export default function ChangePasswordScreen(): React.ReactElement {
     }
   };
 
-  // Whether this is a forced password change (first login) or voluntary
-  const isForced = user?.mustChangePassword === true;
 
   return (
     <>
@@ -121,7 +130,13 @@ export default function ChangePasswordScreen(): React.ReactElement {
         {/* Custom header — shown only for voluntary password change */}
         {!isForced && (
           <View style={styles.header}>
-            <TouchableOpacity hitSlop={12} onPress={() => router.back()}>
+            <TouchableOpacity
+              hitSlop={12}
+              onPress={() => {
+                const opener = user?.role === 'ADMIN' ? '/(admin)/settings' : '/(employee)/profile';
+                router.replace(opener as any);
+              }}
+            >
               <Icon name="back" size="lg" color={Colors.textOnPrimary} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Change Password</Text>

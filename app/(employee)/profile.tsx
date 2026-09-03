@@ -74,7 +74,7 @@ export default function ProfileScreen(): React.ReactElement {
   const displayName = meData
     ? `${meData.firstName} ${meData.lastName}`
     : storeUser?.name ?? 'User';
-  const displayEmployeeCode = meData?.employeeCode ?? storeUser?.id ?? 'N/A';
+  const displayEmployeeCode = meData?.employeeCode ?? 'N/A';
   const displayRole = meData?.role === 'ADMIN' ? 'Admin' : 'Employee';
   const displayDesignation = meData?.designation ?? 'N/A';
   const displayPhone = meData?.phone ?? 'Not provided';
@@ -139,7 +139,7 @@ export default function ProfileScreen(): React.ReactElement {
   };
 
   const handleChangePassword = () => {
-    router.push('/(auth)/change-password');
+    router.push('/(auth)/change-password?mode=normal');
   };
 
   // Show loading indicator only when both meLoading and no storeUser (rare case)

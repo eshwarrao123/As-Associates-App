@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateMeDto } from './dto/update-me.dto';
 import { UpdateStatusDto } from './dto/update-status.dto';
 import { ListUsersDto } from './dto/list-users.dto';
@@ -44,6 +45,7 @@ export class UsersService {
         firstName: dto.firstName,
         lastName: dto.lastName,
         phone: dto.phone,
+        designation: dto.designation,
         role: 'EMPLOYEE',
         status: 'PENDING',
         employeeCode,
@@ -59,6 +61,7 @@ export class UsersService {
         status: true,
         employeeCode: true,
         phone: true,
+        designation: true,
         createdAt: true,
       },
     });
@@ -101,10 +104,14 @@ export class UsersService {
           status: true,
           employeeCode: true,
           phone: true,
+          designation: true,
           photoUrl: true,
           createdAt: true,
           _count: {
-            select: { assignments: true },
+            select: {
+              assignments: true,
+              attendanceLogs: true,
+            },
           },
         },
       }),
@@ -135,6 +142,7 @@ export class UsersService {
         status: true,
         employeeCode: true,
         phone: true,
+        designation: true,
         photoUrl: true,
         mustChangePassword: true,
         createdAt: true,
@@ -153,6 +161,7 @@ export class UsersService {
         },
         _count: {
           select: {
+            assignments: { where: { isActive: true } },
             attendanceLogs: true,
             progressLogs: true,
             uploads: true,
@@ -241,6 +250,7 @@ export class UsersService {
         status: true,
         employeeCode: true,
         phone: true,
+        designation: true,
         photoUrl: true,
         mustChangePassword: true,
         createdAt: true,
@@ -276,6 +286,49 @@ export class UsersService {
         photoUrl: true,
       },
     });
+    return updated;
+  }
+
+  // ─── Admin: Update employee ─────────────────────────────────────────────────
+  async updateUser(id: string, dto: UpdateUserDto) {
+    const existing = await this.prisma.user.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('User not found');
+
+    // Check email uniqueness if email is being changed
+    if (dto.email && dto.email !== existing.email) {
+      const emailTaken = await this.prisma.user.findUnique({
+        where: { email: dto.email },
+      });
+      if (emailTaken) {
+        throw new ConflictException('Email is already in use');
+      }
+    }
+
+    const updated = await this.prisma.user.update({
+      where: { id },
+      data: {
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        phone: dto.phone,
+        email: dto.email,
+        designation: dto.designation,
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        status: true,
+        employeeCode: true,
+        phone: true,
+        designation: true,
+        photoUrl: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
     return updated;
   }
 }

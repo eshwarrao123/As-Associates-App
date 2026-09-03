@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateMeDto } from './dto/update-me.dto';
 import { UpdateStatusDto } from './dto/update-status.dto';
 import { ListUsersDto } from './dto/list-users.dto';
@@ -58,6 +59,15 @@ export class UsersController {
   @Roles(Role.ADMIN)
   getUserById(@Param('id', ParseUUIDPipe) id: string) {
     return this.usersService.getUserById(id);
+  }
+
+  @Patch(':id')
+  @Roles(Role.ADMIN)
+  updateUser(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateUserDto,
+  ) {
+    return this.usersService.updateUser(id, dto);
   }
 
   @Patch(':id/status')

@@ -37,12 +37,20 @@ interface UserResponse {
   profilePhoto?: string | null;
   createdAt: string;
   updatedAt: string;
+  _count?: {
+    assignments: number;
+    attendanceLogs: number;
+  };
 }
 
 interface UserDetailResponse extends UserResponse {
-  activeProjectCount?: number;
-  attendanceRate?: number;
-  lastLoginAt?: string;
+  assignments?: {
+    project: {
+      id: string;
+      name: string;
+      status: 'ONGOING' | 'COMPLETED' | 'ON_HOLD' | 'UPCOMING';
+    };
+  }[];
   _count?: {
     assignments: number;
     attendanceLogs: number;
@@ -130,11 +138,31 @@ export async function updateEmployee(
     designation?: string;
   },
 ) {
-  const response = await apiClient.patch<{ data: UserResponse }>(
+  // Split name into firstName and lastName (DTO whitelist requires separate fields)
+  const [firstName, ...lastNameParts] = (data.name || '').trim().split(/\s+/);
+  const lastName = lastNameParts.join(' ') || '';
+
+  const payload: {
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    email?: string;
+    designation?: string;
+  } = {};
+
+  if (data.name) {
+    payload.firstName = firstName;
+    payload.lastName = lastName;
+  }
+  if (data.phone !== undefined) payload.phone = data.phone;
+  if (data.email !== undefined) payload.email = data.email;
+  if (data.designation !== undefined) payload.designation = data.designation;
+
+  const response = await apiClient.patch<UserResponse>(
     `/users/${id}`,
-    data,
+    payload,
   );
-  return response.data.data;
+  return response.data;
 }
 
 /**
@@ -159,10 +187,8 @@ export async function updateEmployeeStatus(
  * @returns Array of projects
  */
 export async function getEmployeeProjects(id: string) {
-  const response = await apiClient.get<{ data: ProjectResponse[] }>(
-    `/projects?userId=${id}`,
-  );
-  return response.data.data;
+  const user = await getUserById(id);
+  return user.assignments?.map((a) => a.project) ?? [];
 }
 
 // ─── Project Response Type ────────────────────────────────────────────────────

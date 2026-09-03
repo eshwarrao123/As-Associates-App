@@ -4,27 +4,27 @@ import {
   IsOptional,
   MinLength,
   MaxLength,
-  Matches,
 } from 'class-validator';
 
-export class CreateUserDto {
-  @IsEmail()
-  email: string;
-
+export class UpdateUserDto {
   @IsString()
+  @IsOptional()
   @MinLength(2)
   @MaxLength(50)
-  firstName: string;
-
-  @IsString()
-  @MinLength(2)
-  @MaxLength(50)
-  lastName: string;
+  firstName?: string;
 
   @IsString()
   @IsOptional()
-  @Matches(/^\+?[0-9]{10,15}$/, { message: 'Invalid phone number' })
+  @MaxLength(50)
+  lastName?: string;
+
+  @IsString()
+  @IsOptional()
   phone?: string;
+
+  @IsEmail()
+  @IsOptional()
+  email?: string;
 
   @IsString()
   @IsOptional()

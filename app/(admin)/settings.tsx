@@ -119,7 +119,7 @@ export default function SettingsScreen(): React.ReactElement {
   };
 
   const handleChangePassword = () => {
-    router.push('/(auth)/change-password');
+    router.push('/(auth)/change-password?mode=normal');
   };
 
   return (

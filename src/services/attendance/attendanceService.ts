@@ -23,7 +23,7 @@ interface CheckOutResponse {
 }
 
 interface AttendanceRecord {
-  date: string; // YYYY-MM-DD
+  date: string; // ISO 8601 datetime from backend (e.g., "2026-09-02T00:00:00.000Z")
   status: 'PRESENT' | 'ABSENT' | 'HALF_DAY';
   checkInTime?: string;
   checkOutTime?: string;
@@ -31,12 +31,6 @@ interface AttendanceRecord {
 
 interface AttendanceCalendarResponse {
   data: AttendanceRecord[];
-  summary?: {
-    present: number;
-    absent: number;
-    late: number;
-    totalWorkingDays: number;
-  };
 }
 
 // ─── Attendance Service Functions ─────────────────────────────────────────────
@@ -77,12 +71,19 @@ export async function getMyAttendanceCalendar(
   year: number,
 ): Promise<AttendanceCalendarResponse> {
   // Calculate first and last day of the month
-  const firstDay = new Date(year, month - 1, 1);
-  const lastDay = new Date(year, month, 0);
+  const firstDay = new Date(Date.UTC(year, month - 1, 1));
+  const lastDay = new Date(Date.UTC(year, month, 0));
 
-  // Format as YYYY-MM-DD
-  const startDate = firstDay.toISOString().split('T')[0];
-  const endDate = lastDay.toISOString().split('T')[0];
+  // Format as YYYY-MM-DD using UTC (matches backend @db.Date)
+  const formatUTCDateKey = (d: Date): string => {
+    const y = d.getUTCFullYear();
+    const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  const startDate = formatUTCDateKey(firstDay);
+  const endDate = formatUTCDateKey(lastDay);
 
   const response = await apiClient.get<AttendanceCalendarResponse>(
     `/attendance/my`,

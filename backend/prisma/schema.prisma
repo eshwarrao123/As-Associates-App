@@ -64,6 +64,7 @@ model User {
   status           UserStatus @default(PENDING)
   employeeCode     String     @unique
   phone            String?
+  designation      String?
   photoUrl         String?
   mustChangePassword Boolean  @default(true)
   setupTokenHash   String?

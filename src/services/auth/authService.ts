@@ -10,7 +10,6 @@ interface LoginRequest {
 interface LoginResponse {
   accessToken: string;
   refreshToken: string;
-  mustChangePassword: boolean;
   user: {
     id: string;
     email: string;
@@ -23,6 +22,7 @@ interface LoginResponse {
     designation?: string;
     department?: string;
     profilePhoto?: string | null;
+    mustChangePassword: boolean;
   };
 }
 
@@ -60,6 +60,7 @@ interface GetMeResponse {
   designation?: string;
   department?: string;
   profilePhoto?: string | null;
+  mustChangePassword?: boolean;
 }
 
 // ─── Auth Service Functions ───────────────────────────────────────────────────

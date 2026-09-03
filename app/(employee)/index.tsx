@@ -30,6 +30,7 @@ import {
   withAlpha,
 } from '../../src/constants/tokens';
 import type { Project, RecentUpload, AttendanceSummary } from '../../src/types/employee';
+import { toDateKey, getTodayKey } from '../../src/utils/date';
 
 // ─── Mock data (replace with TanStack Query hooks) ────────────────────────────
 
@@ -185,8 +186,7 @@ export default function EmployeeHomeScreen(): React.ReactElement {
   const { data: attendanceData } = useAttendanceCalendar(currentMonth, currentYear);
 
   // Get today's attendance status
-  const todayDate = now.toISOString().split('T')[0]; // YYYY-MM-DD
-  const todayAttendance = attendanceData?.data?.find((record) => record.date === todayDate);
+  const todayAttendance = attendanceData?.data?.find((record) => toDateKey(record.date) === getTodayKey());
   const isPresent = todayAttendance?.status === 'PRESENT' || todayAttendance?.status === 'HALF_DAY';
 
   const handleProjectPress = useCallback(

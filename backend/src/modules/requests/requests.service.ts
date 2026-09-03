@@ -197,6 +197,7 @@ export class RequestsService {
           select: {
             id: true,
             name: true,
+            location: true,
           },
         },
         reviewedBy: {

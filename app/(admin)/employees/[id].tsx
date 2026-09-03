@@ -65,7 +65,6 @@ export default function EmployeeDetailScreen(): React.ReactElement {
 
   // Fetch employee data
   const { data: employee, isLoading: isLoadingEmployee } = useEmployee(id ?? '');
-  const { data: projects, isLoading: isLoadingProjects } = useEmployeeProjects(id ?? '');
   const updateStatus = useUpdateEmployeeStatus();
 
   if (isLoadingEmployee) {
@@ -113,16 +112,16 @@ export default function EmployeeDetailScreen(): React.ReactElement {
   const fullName = `${employee.firstName} ${employee.lastName}`;
 
   // Extract counts from backend response
-  const projectCount = employee.activeProjectCount ?? projects?.length ?? 0;
-  const attendanceRate = employee.attendanceRate ? `${Math.round(employee.attendanceRate)}%` : 'N/A';
+  const projectCount = employee._count?.assignments ?? 0;
+  const attendanceCount = employee._count?.attendanceLogs ?? 0;
   const uploadCount = employee._count?.uploads ?? 0;
 
   // Map projects to display format
-  const assignedProjects = projects?.slice(0, 3).map((p) => ({
-    id: p.id,
-    name: p.name,
-    status: mapProjectStatusToBadge(p.status),
-    statusLabel: p.status === 'ONGOING' ? 'Ongoing' : p.status === 'COMPLETED' ? 'Completed' : p.status === 'ON_HOLD' ? 'On Hold' : p.status === 'UPCOMING' ? 'Upcoming' : p.status,
+  const assignedProjects = employee.assignments?.slice(0, 3).map((a) => ({
+    id: a.project.id,
+    name: a.project.name,
+    status: mapProjectStatusToBadge(a.project.status),
+    statusLabel: a.project.status === 'ONGOING' ? 'Ongoing' : a.project.status === 'COMPLETED' ? 'Completed' : a.project.status === 'ON_HOLD' ? 'On Hold' : a.project.status === 'UPCOMING' ? 'Upcoming' : a.project.status,
   })) ?? [];
 
   const handleStatusToggle = () => {
@@ -198,9 +197,7 @@ export default function EmployeeDetailScreen(): React.ReactElement {
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statCell}>
-              <Text style={[styles.statValue, typeof attendanceRate === 'string' && attendanceRate !== 'N/A' ? { color: attendanceColor(attendanceRate) } : { color: Colors.textMuted }]}>
-                {attendanceRate}
-              </Text>
+              <Text style={styles.statValue}>{attendanceCount}</Text>
               <Text style={styles.statLabel}>Attendance</Text>
             </View>
             <View style={styles.statDivider} />
@@ -238,11 +235,7 @@ export default function EmployeeDetailScreen(): React.ReactElement {
           {/* ── Section 4: Assigned Projects ────────────────────────────── */}
           <Card noPadding style={styles.linkCard}>
             <Text style={styles.sectionLabel}>ASSIGNED PROJECTS</Text>
-            {isLoadingProjects ? (
-              <View style={styles.infoRow}>
-                <ActivityIndicator size="small" color={Colors.primary} />
-              </View>
-            ) : assignedProjects.length === 0 ? (
+            {assignedProjects.length === 0 ? (
               <View style={styles.infoRow}>
                 <Text style={styles.infoText}>No projects assigned yet.</Text>
               </View>
@@ -257,7 +250,7 @@ export default function EmployeeDetailScreen(): React.ReactElement {
                     {i < assignedProjects.length - 1 && <View style={styles.divider} />}
                   </React.Fragment>
                 ))}
-                {(projects?.length ?? 0) > 3 && (
+                {projectCount > 3 && (
                   <>
                     <View style={styles.divider} />
                     <TouchableOpacity

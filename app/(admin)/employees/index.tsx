@@ -66,8 +66,8 @@ export default function EmployeesScreen(): React.ReactElement {
     empId: user.employeeCode ?? 'N/A',
     designation: user.designation ?? 'No designation',
     active: user.status === 'ACTIVE',
-    projects: 0, // TODO: Will be populated when we have project assignments
-    attendance: 'N/A', // TODO: Will be populated when we have attendance data
+    projects: user._count?.assignments ?? 0,
+    attendance: user._count?.attendanceLogs ?? 0,
   })) ?? [];
 
   // Client-side filtering

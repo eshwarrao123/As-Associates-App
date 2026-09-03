@@ -82,6 +82,7 @@ function AuthGuard(): React.ReactElement | null {
             role: userData.role as UserRole,
             department: userData.department,
             avatarInitials: `${userData.firstName[0]}${userData.lastName[0]}`.toUpperCase(),
+            mustChangePassword: userData.mustChangePassword,
           };
 
           setUser(user);

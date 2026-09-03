@@ -226,6 +226,9 @@ export default function AdminDashboardScreen(): React.ReactElement {
                         <Text style={styles.pendingTime}>{requesterName}</Text>
                       </View>
                       <Text style={styles.pendingDetail}>{req.subject || req.description}</Text>
+                      {req.project?.name && (
+                        <Text style={styles.pendingDetail}>{req.project.name}</Text>
+                      )}
                       <View style={styles.actionRow}>
                         <TouchableOpacity
                           activeOpacity={0.85}
