@@ -39,9 +39,9 @@ export class AttendanceService {
 
     // Check if already clocked in today
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    today.setUTCHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
 
     const existingLog = await this.prisma.attendanceLog.findFirst({
       where: {
@@ -83,9 +83,9 @@ export class AttendanceService {
   async clockOut(userId: string) {
     // Find today's attendance log with no checkout
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    today.setUTCHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
 
     const attendanceLog = await this.prisma.attendanceLog.findFirst({
       where: {

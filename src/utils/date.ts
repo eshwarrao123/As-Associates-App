@@ -27,12 +27,12 @@ export function formatUTCDateKey(d: Date): string {
 }
 
 /**
- * Gets today's date as YYYY-MM-DD in local timezone.
- * Use this for comparing with user-local "today" (what the user considers today).
- * @returns Today's date key in local timezone
+ * Gets today's date as YYYY-MM-DD in UTC timezone.
+ * This matches the backend's @db.Date serialization format (UTC dates).
+ * @returns Today's date key in UTC
  */
 export function getTodayKey(): string {
-  return formatLocalDateKey(new Date());
+  return formatUTCDateKey(new Date());
 }
 
 /**
