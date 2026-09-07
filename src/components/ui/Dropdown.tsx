@@ -12,11 +12,16 @@ import { Colors, FontFamily, FontSize, BorderRadius, InputHeight } from '../../c
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+export interface DropdownOption {
+  id: string;
+  label: string;
+}
+
 interface DropdownProps {
   label?: string;
   placeholder?: string;
   value: string | null;
-  options: string[];
+  options: string[] | DropdownOption[];
   onSelect: (value: string) => void;
   containerStyle?: ViewStyle;
 }
@@ -33,6 +38,24 @@ export const Dropdown: React.FC<DropdownProps> = ({
 }) => {
   const [open, setOpen] = useState(false);
 
+  // Helper to determine if options are objects or strings
+  const isObjectOptions = (opts: string[] | DropdownOption[]): opts is DropdownOption[] => {
+    return opts.length > 0 && typeof opts[0] === 'object';
+  };
+
+  // Get display text for the selected value
+  const getDisplayValue = (): string | null => {
+    if (!value) return null;
+
+    if (isObjectOptions(options)) {
+      const selected = options.find(opt => opt.id === value);
+      return selected?.label ?? null;
+    }
+    return value;
+  };
+
+  const displayValue = getDisplayValue();
+
   return (
     <View style={[styles.container, containerStyle]}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
@@ -42,8 +65,8 @@ export const Dropdown: React.FC<DropdownProps> = ({
         style={styles.trigger}
         onPress={() => setOpen(true)}
       >
-        <Text style={[styles.value, !value && styles.placeholder]} numberOfLines={1}>
-          {value ?? placeholder}
+        <Text style={[styles.value, !displayValue && styles.placeholder]} numberOfLines={1}>
+          {displayValue ?? placeholder}
         </Text>
         <Text style={styles.chevron}>⌄</Text>
       </TouchableOpacity>
@@ -51,25 +74,49 @@ export const Dropdown: React.FC<DropdownProps> = ({
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
           <View style={styles.sheet}>
-            {options.map((opt) => {
-              const active = opt === value;
-              return (
-                <TouchableOpacity
-                  key={opt}
-                  activeOpacity={0.7}
-                  style={styles.option}
-                  onPress={() => {
-                    onSelect(opt);
-                    setOpen(false);
-                  }}
-                >
-                  <Text style={[styles.optionText, active && styles.optionTextActive]}>
-                    {opt}
-                  </Text>
-                  {active ? <Text style={styles.check}>✓</Text> : null}
-                </TouchableOpacity>
-              );
-            })}
+            {isObjectOptions(options) ? (
+              // Render object options with unique IDs as keys
+              options.map((opt) => {
+                const active = opt.id === value;
+                return (
+                  <TouchableOpacity
+                    key={opt.id}
+                    activeOpacity={0.7}
+                    style={styles.option}
+                    onPress={() => {
+                      onSelect(opt.id);
+                      setOpen(false);
+                    }}
+                  >
+                    <Text style={[styles.optionText, active && styles.optionTextActive]}>
+                      {opt.label}
+                    </Text>
+                    {active ? <Text style={styles.check}>✓</Text> : null}
+                  </TouchableOpacity>
+                );
+              })
+            ) : (
+              // Render string options (backward compatible)
+              options.map((opt) => {
+                const active = opt === value;
+                return (
+                  <TouchableOpacity
+                    key={opt}
+                    activeOpacity={0.7}
+                    style={styles.option}
+                    onPress={() => {
+                      onSelect(opt);
+                      setOpen(false);
+                    }}
+                  >
+                    <Text style={[styles.optionText, active && styles.optionTextActive]}>
+                      {opt}
+                    </Text>
+                    {active ? <Text style={styles.check}>✓</Text> : null}
+                  </TouchableOpacity>
+                );
+              })
+            )}
           </View>
         </Pressable>
       </Modal>

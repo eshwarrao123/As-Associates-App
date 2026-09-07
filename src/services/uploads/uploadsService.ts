@@ -6,6 +6,7 @@ export interface UploadFileData {
   uri: string;
   name: string;
   type: string;
+  projectId: string;
 }
 
 // ─── Response Types ───────────────────────────────────────────────────────────
@@ -32,20 +33,24 @@ export interface SignedUrlResponse {
 
 /**
  * Uploads a file to the server.
- * @param file - File data with uri, name, and type
+ * @param file - File data with uri, name, type, and projectId
  * @returns Upload response with URL and public ID
  */
 export async function uploadFile(file: UploadFileData): Promise<UploadResponse> {
   const formData = new FormData();
 
-  // Append file to FormData with key 'file'
+  // Append file to FormData with key 'file' (React Native FormData format)
   formData.append('file', {
     uri: file.uri,
     name: file.name,
     type: file.type,
   } as any);
 
-  const response = await apiClient.post<{ data: UploadResponse }>(
+  // Append projectId as a separate field (backend expects this)
+  formData.append('projectId', file.projectId);
+
+  // Backend returns upload object directly (no wrapping), but we only need url/publicId
+  const response = await apiClient.post<any>(
     '/uploads',
     formData,
     {
@@ -55,7 +60,12 @@ export async function uploadFile(file: UploadFileData): Promise<UploadResponse> 
     },
   );
 
-  return response.data.data;
+  // Map backend response to our interface
+  return {
+    url: response.data.fileUrl,
+    publicId: response.data.storageKey,
+    resourceType: response.data.fileType,
+  };
 }
 
 /**
@@ -63,10 +73,16 @@ export async function uploadFile(file: UploadFileData): Promise<UploadResponse> 
  * @returns Array of upload objects
  */
 export async function getMyUploads(): Promise<MyUploadResponse[]> {
-  const response = await apiClient.get<{ data: MyUploadResponse[] }>(
-    '/uploads/my',
-  );
-  return response.data.data;
+  const response = await apiClient.get<any>('/uploads/my');
+
+  // Backend returns { data: [...], meta: {...} }
+  return response.data.data.map((upload: any) => ({
+    id: upload.id,
+    url: upload.fileUrl,
+    publicId: upload.storageKey,
+    resourceType: upload.fileType,
+    createdAt: upload.createdAt,
+  }));
 }
 
 /**

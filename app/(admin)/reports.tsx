@@ -4,7 +4,7 @@ import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../../src/components/ui/Button';
 import { Card } from '../../src/components/ui/Card';
-import { Dropdown } from '../../src/components/ui/Dropdown';
+import { Dropdown, type DropdownOption } from '../../src/components/ui/Dropdown';
 import { AdminBottomNav } from '../../src/components/ui/AdminBottomNav';
 import { Icon } from '../../src/components/ui/Icon';
 import { useAdminAttendance } from '../../src/hooks/useAdminReports';
@@ -80,16 +80,20 @@ function calculateAttendanceRows(
 export default function ReportsScreen(): React.ReactElement {
   const router = useRouter();
   const [reportType, setReportType] = useState<ReportType>('Attendance');
-  const [project, setProject] = useState<string | null>('All Projects');
+  const [project, setProject] = useState<string | null>('all');
   const [range, setRange] = useState<string | null>('This Month');
 
   // Fetch real projects for filter dropdown
   const { data: projectsData } = useAllProjects(1);
 
-  // Build project options from real data
-  const projectOptions = ['All Projects'].concat(
-    projectsData?.data.map((p) => p.name) ?? []
-  );
+  // Build project options from real data with unique IDs
+  const projectOptions: DropdownOption[] = [
+    { id: 'all', label: 'All Projects' },
+    ...(projectsData?.data.map((p) => ({
+      id: p.id,
+      label: p.name,
+    })) ?? []),
+  ];
 
   // Fetch attendance data (only when reportType is 'Attendance')
   const {

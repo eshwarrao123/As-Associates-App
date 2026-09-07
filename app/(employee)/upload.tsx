@@ -110,25 +110,66 @@ export default function UploadScreen(): React.ReactElement {
       return;
     }
 
-    // Upload all selected images sequentially
-    for (const image of selectedImages) {
-      uploadFile.mutate(image, {
-        onError: (err) => {
-          Alert.alert('Upload Error', getErrorMessage(err));
-        },
-      });
+    if (!projectId) {
+      Alert.alert('Error', 'Please select a project before uploading.');
+      return;
     }
 
-    // After all uploads initiated, show success
-    Alert.alert('Success', 'Files uploaded successfully!', [
-      {
-        text: 'OK',
-        onPress: () => {
-          setSelectedImages([]);
-          setNotes('');
+    let successCount = 0;
+    let errorCount = 0;
+
+    // Upload all selected images sequentially
+    for (const image of selectedImages) {
+      try {
+        await new Promise<void>((resolve, reject) => {
+          uploadFile.mutate(
+            { ...image, projectId },
+            {
+              onSuccess: () => {
+                successCount++;
+                resolve();
+              },
+              onError: (err) => {
+                errorCount++;
+                console.error('Upload failed:', err);
+                reject(err);
+              },
+            },
+          );
+        });
+      } catch (err) {
+        // Continue with next image even if one fails
+      }
+    }
+
+    // Show result after all uploads complete
+    if (errorCount === 0) {
+      Alert.alert('Success', `${successCount} file${successCount > 1 ? 's' : ''} uploaded successfully!`, [
+        {
+          text: 'OK',
+          onPress: () => {
+            setSelectedImages([]);
+            setNotes('');
+          },
         },
-      },
-    ]);
+      ]);
+    } else if (successCount > 0) {
+      Alert.alert(
+        'Partial Success',
+        `${successCount} file${successCount > 1 ? 's' : ''} uploaded, ${errorCount} failed.`,
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              setSelectedImages([]);
+              setNotes('');
+            },
+          },
+        ],
+      );
+    } else {
+      Alert.alert('Upload Failed', 'All uploads failed. Please check your connection and try again.');
+    }
   };
 
   return (

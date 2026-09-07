@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Button } from '../../../src/components/ui/Button';
 import { Icon } from '../../../src/components/ui/Icon';
 import { Card } from '../../../src/components/ui/Card';
@@ -11,6 +12,7 @@ import { Dropdown } from '../../../src/components/ui/Dropdown';
 import { useCreateProject } from '../../../src/hooks/useAdminProjects';
 import { useEmployees } from '../../../src/hooks/useEmployees';
 import { getErrorMessage } from '../../../src/services/api/errorHandler';
+import { formatLocalDateKey } from '../../../src/utils/date';
 import {
   BorderRadius,
   Colors,
@@ -59,11 +61,36 @@ export default function NewProjectScreen(): React.ReactElement {
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [budget, setBudget] = useState('');
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
 
   const toggleService = (s: string) =>
     setServices((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
   const toggleTeam = (id: string) =>
     setTeam((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+
+  const handleStartDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
+    setShowStartPicker(false);
+    if (event.type === 'set' && selectedDate) {
+      setStartDate(selectedDate);
+      // If end date is set and is before the new start date, clear it
+      if (endDate && selectedDate > endDate) {
+        setEndDate(null);
+      }
+    }
+  };
+
+  const handleEndDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
+    setShowEndPicker(false);
+    if (event.type === 'set' && selectedDate) {
+      // Validate that end date is not before start date
+      if (selectedDate < startDate) {
+        Alert.alert('Invalid Date', 'End date cannot be earlier than start date');
+        return;
+      }
+      setEndDate(selectedDate);
+    }
+  };
 
   // Map backend employees to UI format
   const engineers = employeesData?.data.map((user) => ({
@@ -92,8 +119,8 @@ export default function NewProjectScreen(): React.ReactElement {
       name: name.trim(),
       description: description.trim() || undefined,
       location: address.trim(),
-      startDate: startDate.toISOString().split('T')[0],
-      endDate: endDate ? endDate.toISOString().split('T')[0] : undefined,
+      startDate: formatLocalDateKey(startDate),
+      endDate: endDate ? formatLocalDateKey(endDate) : undefined,
       budget: budget.trim() ? parseFloat(budget.replace(/[^0-9.]/g, '')) : undefined,
     };
 
@@ -162,19 +189,60 @@ export default function NewProjectScreen(): React.ReactElement {
             <View style={styles.dateRow}>
               <View style={styles.flex1}>
                 <Text style={styles.fieldLabel}>Start Date</Text>
-                <TouchableOpacity activeOpacity={0.7} style={styles.dateField}>
-                  <Text style={styles.dateText}>20 Jul 2026</Text>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  style={styles.dateField}
+                  onPress={() => setShowStartPicker(true)}
+                  disabled={createProject.isPending}
+                >
+                  <Text style={styles.dateText}>
+                    {startDate.toLocaleDateString('en-GB', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric',
+                    })}
+                  </Text>
                   <Icon name="calendarOutline" size="sm" color={Colors.textMuted} />
                 </TouchableOpacity>
               </View>
               <View style={styles.flex1}>
-                <Text style={styles.fieldLabel}>End Date</Text>
-                <TouchableOpacity activeOpacity={0.7} style={styles.dateField}>
-                  <Text style={styles.datePlaceholder}>Select date</Text>
+                <Text style={styles.fieldLabel}>End Date (Optional)</Text>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  style={styles.dateField}
+                  onPress={() => setShowEndPicker(true)}
+                  disabled={createProject.isPending}
+                >
+                  <Text style={endDate ? styles.dateText : styles.datePlaceholder}>
+                    {endDate
+                      ? endDate.toLocaleDateString('en-GB', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric',
+                        })
+                      : 'Select date'}
+                  </Text>
                   <Icon name="calendarOutline" size="sm" color={Colors.textMuted} />
                 </TouchableOpacity>
               </View>
             </View>
+            {showStartPicker && (
+              <DateTimePicker
+                value={startDate}
+                mode="date"
+                display={Platform.OS === 'android' ? 'default' : 'spinner'}
+                onChange={handleStartDateChange}
+              />
+            )}
+            {showEndPicker && (
+              <DateTimePicker
+                value={endDate || new Date()}
+                mode="date"
+                display={Platform.OS === 'android' ? 'default' : 'spinner'}
+                onChange={handleEndDateChange}
+                minimumDate={startDate}
+              />
+            )}
           </Card>
 
           {/* Services required */}

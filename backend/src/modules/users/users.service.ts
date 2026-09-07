@@ -110,7 +110,14 @@ export class UsersService {
           _count: {
             select: {
               assignments: true,
-              attendanceLogs: true,
+              attendanceLogs: {
+                where: {
+                  OR: [
+                    { status: 'PRESENT' },
+                    { status: 'HALF_DAY' },
+                  ],
+                },
+              },
             },
           },
         },
@@ -162,7 +169,14 @@ export class UsersService {
         _count: {
           select: {
             assignments: { where: { isActive: true } },
-            attendanceLogs: true,
+            attendanceLogs: {
+              where: {
+                OR: [
+                  { status: 'PRESENT' },
+                  { status: 'HALF_DAY' },
+                ],
+              },
+            },
             progressLogs: true,
             uploads: true,
           },
@@ -257,7 +271,14 @@ export class UsersService {
         _count: {
           select: {
             assignments: { where: { isActive: true } },
-            attendanceLogs: true,
+            attendanceLogs: {
+              where: {
+                OR: [
+                  { status: 'PRESENT' },
+                  { status: 'HALF_DAY' },
+                ],
+              },
+            },
             progressLogs: true,
             uploads: true,
           },
