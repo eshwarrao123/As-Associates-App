@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View, Image } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar } from '../../../src/components/ui/Avatar';
@@ -11,6 +11,7 @@ import { AdminBottomNav } from '../../../src/components/ui/AdminBottomNav';
 import { Icon } from '../../../src/components/ui/Icon';
 import { useAdminProject, useDeleteProject } from '../../../src/hooks/useAdminProjects';
 import { useAdminProgressLogs } from '../../../src/hooks/useProgressLogs';
+import { useAdminProjectUploads } from '../../../src/hooks/useAdminProjectUploads';
 import { getErrorMessage } from '../../../src/services/api/errorHandler';
 import {
   BorderRadius,
@@ -55,6 +56,7 @@ export default function ProjectDetailScreen(): React.ReactElement {
 
   const { data: project, isLoading, error } = useAdminProject(id ?? '');
   const { data: progressLogs, isLoading: isLoadingProgress } = useAdminProgressLogs(id);
+  const { data: uploads, isLoading: isLoadingUploads } = useAdminProjectUploads(id ?? '');
   const deleteProject = useDeleteProject();
 
   const handleDelete = () => {
@@ -216,13 +218,42 @@ export default function ProjectDetailScreen(): React.ReactElement {
           {tab === 'Photos' && (
             <Card style={styles.section}>
               <Text style={styles.sectionLabel}>SITE PHOTOS</Text>
-              <View style={styles.photoGrid}>
-                {Array.from({ length: 6 }, (_, i) => (
-                  <View key={i} style={styles.photoThumb}>
-                    <Icon name="site" size="xl" color={Colors.textMuted} />
-                  </View>
-                ))}
-              </View>
+              {isLoadingUploads ? (
+                <View style={styles.progressLoadingRow}>
+                  <ActivityIndicator size="small" color={Colors.primary} />
+                </View>
+              ) : uploads && uploads.length > 0 ? (
+                <View style={styles.photoGrid}>
+                  {uploads.map((upload) => (
+                    <TouchableOpacity
+                      key={upload.id}
+                      activeOpacity={0.7}
+                      style={styles.photoThumb}
+                      onPress={() => {
+                        // Future: Open full-screen image viewer
+                        Alert.alert(
+                          'Photo',
+                          `Uploaded by ${upload.user.firstName} ${upload.user.lastName}\n${new Date(upload.createdAt).toLocaleDateString('en-GB')}`,
+                        );
+                      }}
+                    >
+                      {upload.fileType === 'IMAGE' ? (
+                        <Image
+                          source={{ uri: upload.fileUrl }}
+                          style={styles.photoImage}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <View style={styles.photoPlaceholder}>
+                          <Icon name="site" size="xl" color={Colors.textMuted} />
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ) : (
+                <Text style={styles.emptyText}>No photos uploaded for this project yet</Text>
+              )}
             </Card>
           )}
 
@@ -420,6 +451,18 @@ const styles = StyleSheet.create({
     width: '31.5%',
     aspectRatio: 1,
     borderRadius: BorderRadius.btn,
+    backgroundColor: withAlpha(Colors.primary, 0.06),
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  photoImage: {
+    width: '100%',
+    height: '100%',
+  },
+  photoPlaceholder: {
+    width: '100%',
+    height: '100%',
     backgroundColor: withAlpha(Colors.primary, 0.06),
     alignItems: 'center',
     justifyContent: 'center',

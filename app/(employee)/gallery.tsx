@@ -3,6 +3,7 @@ import { ActivityIndicator, FlatList, Image, RefreshControl, StyleSheet, Text, T
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon } from '../../src/components/ui/Icon';
+import { ImageViewer } from '../../src/components/ui/ImageViewer';
 import { useMyUploads } from '../../src/hooks/useUploads';
 import {
   Colors,
@@ -64,11 +65,15 @@ const FILTERS: FilterChip[] = [
 
 // ─── Grid tile ────────────────────────────────────────────────────────────────
 
-const GridTile: React.FC<{ item: GalleryItem }> = ({ item }) => {
+const GridTile: React.FC<{ item: GalleryItem; onPress: (item: GalleryItem) => void }> = ({ item, onPress }) => {
   const isVideo = item.resourceType === 'video';
 
   return (
-    <View style={styles.tile}>
+    <TouchableOpacity
+      style={styles.tile}
+      activeOpacity={0.75}
+      onPress={() => onPress(item)}
+    >
       {item.url ? (
         <View style={styles.tilePlaceholder}>
           <Image source={{ uri: item.url }} style={styles.tileImage} resizeMode="cover" />
@@ -86,7 +91,7 @@ const GridTile: React.FC<{ item: GalleryItem }> = ({ item }) => {
       <Text style={styles.tileDate} numberOfLines={1}>
         {item.date}
       </Text>
-    </View>
+    </TouchableOpacity>
   );
 };
 
@@ -112,8 +117,20 @@ const LoadingState: React.FC = () => (
 export default function GalleryScreen(): React.ReactElement {
   const router = useRouter();
   const [filter, setFilter] = useState<FilterKey>('all');
+  const [viewerVisible, setViewerVisible] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const { data: uploads, isLoading, refetch } = useMyUploads();
+
+  const handleImagePress = (item: GalleryItem) => {
+    setSelectedImage(item.url);
+    setViewerVisible(true);
+  };
+
+  const handleCloseViewer = () => {
+    setViewerVisible(false);
+    setSelectedImage(null);
+  };
 
   const galleryItems = useMemo(
     () => (uploads ? mapUploadsToGalleryItems(uploads) : []),
@@ -171,7 +188,7 @@ export default function GalleryScreen(): React.ReactElement {
             columnWrapperStyle={filtered.length > 0 ? styles.gridRow : undefined}
             contentContainerStyle={styles.gridContent}
             showsVerticalScrollIndicator={false}
-            renderItem={({ item }) => <GridTile item={item} />}
+            renderItem={({ item }) => <GridTile item={item} onPress={handleImagePress} />}
             ListEmptyComponent={EmptyState}
             refreshControl={
               <RefreshControl
@@ -183,6 +200,15 @@ export default function GalleryScreen(): React.ReactElement {
           />
         )}
       </SafeAreaView>
+
+      {/* ── Full-screen Image Viewer ──────────────────────────────────── */}
+      {selectedImage && (
+        <ImageViewer
+          visible={viewerVisible}
+          imageUrl={selectedImage}
+          onClose={handleCloseViewer}
+        />
+      )}
     </>
   );
 }

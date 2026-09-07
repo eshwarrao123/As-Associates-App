@@ -15,6 +15,7 @@ import { useMe } from '../../src/hooks/useMe';
 import { useMyProjects } from '../../src/hooks/useMyProjects';
 import { useAttendanceCalendar } from '../../src/hooks/useAttendance';
 import { useMyUploads } from '../../src/hooks/useUploads';
+import type { MyUploadResponse } from '../../src/services/uploads/uploadsService';
 import { Avatar } from '../../src/components/ui/Avatar';
 import { Badge } from '../../src/components/ui/Badge';
 import { ProgressBar } from '../../src/components/ui/ProgressBar';
@@ -144,24 +145,27 @@ const HorizontalProjectCard: React.FC<HorizontalProjectCardProps> = ({ project, 
 
 /** Upload thumbnail — photo card with timestamp overlay */
 interface UploadThumbnailProps {
-  upload: RecentUpload;
-  onPress: (upload: RecentUpload) => void;
+  imageUrl: string;
+  uploadedAt: string;
+  onPress: () => void;
 }
 
-const UploadThumbnail: React.FC<UploadThumbnailProps> = ({ upload, onPress }) => (
+const UploadThumbnail: React.FC<UploadThumbnailProps> = ({ imageUrl, uploadedAt, onPress }) => (
   <TouchableOpacity
     activeOpacity={0.75}
-    onPress={() => onPress(upload)}
+    onPress={onPress}
     style={styles.uploadThumb}
   >
-    {/* Placeholder photo area */}
-    <View style={styles.uploadThumbImage}>
-      <Icon name="photo" size="xl" color={Colors.textMuted} />
-    </View>
+    {/* Real image thumbnail */}
+    <Image
+      source={{ uri: imageUrl }}
+      style={styles.uploadThumbImage}
+      resizeMode="cover"
+    />
     {/* Timestamp overlay at bottom */}
     <View style={styles.uploadThumbOverlay}>
       <Text style={styles.uploadThumbTimestamp} numberOfLines={1}>
-        {formatUploadTimestamp(upload.uploadedAt)}
+        {formatUploadTimestamp(uploadedAt)}
       </Text>
     </View>
   </TouchableOpacity>
@@ -199,9 +203,10 @@ export default function EmployeeHomeScreen(): React.ReactElement {
     [router],
   );
 
-  const handleUploadPress = useCallback((_upload: RecentUpload) => {
-    // TODO: navigate to upload detail
-  }, []);
+  const handleUploadPress = useCallback((upload: MyUploadResponse) => {
+    // Navigate to gallery where user can see the full image
+    router.push('/(employee)/gallery' as never);
+  }, [router]);
 
   // Use API data if available, fallback to store user for immediate display
   const displayName = meData
@@ -323,14 +328,9 @@ export default function EmployeeHomeScreen(): React.ReactElement {
                 {uploads.slice(0, 3).map((upload) => (
                   <UploadThumbnail
                     key={upload.id}
-                    upload={{
-                      id: upload.id,
-                      filename: upload.publicId.split('/').pop() ?? 'upload',
-                      projectName: 'Project', // TODO: add project name to upload response
-                      uploadedAt: upload.createdAt,
-                      fileType: upload.resourceType === 'image' ? 'image' : 'pdf',
-                    }}
-                    onPress={handleUploadPress}
+                    imageUrl={upload.url}
+                    uploadedAt={upload.createdAt}
+                    onPress={() => handleUploadPress(upload)}
                   />
                 ))}
               </View>
@@ -537,9 +537,9 @@ const styles = StyleSheet.create({
   },
   uploadThumbImage: {
     flex: 1,
+    width: '100%',
+    height: '100%',
     backgroundColor: withAlpha(Colors.primary, 0.06),
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   uploadThumbOverlay: {
     position: 'absolute',

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
+  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -10,6 +12,9 @@ import {
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useProject } from '../../../src/hooks/useProject';
+import { useProjectUploads } from '../../../src/hooks/useProjectUploads';
+import { useProjectProgressLogs } from '../../../src/hooks/useProjectProgressLogs';
+import { useProjectRequests } from '../../../src/hooks/useProjectRequests';
 import { Avatar } from '../../../src/components/ui/Avatar';
 import { Badge } from '../../../src/components/ui/Badge';
 import { Card } from '../../../src/components/ui/Card';
@@ -21,15 +26,73 @@ import {
   FontSize,
   Spacing,
   BorderRadius,
+  withAlpha,
 } from '../../../src/constants/tokens';
 import type { BadgeVariant } from '../../../src/types';
 
-// ─── Mock data (replace with TanStack Query) ──────────────────────────────────
-// Mock data removed - using real API via useProject(id)
+// ─── Helper Functions ─────────────────────────────────────────────────────────
+
+/**
+ * Formats a date string to human-readable format.
+ * @param dateString - ISO date string (YYYY-MM-DD or full ISO)
+ * @returns Formatted date (e.g., "26 Aug 2026")
+ */
+function formatDate(dateString?: string): string {
+  if (!dateString) return 'Not set';
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  } catch {
+    return 'Invalid date';
+  }
+}
+
+/**
+ * Formats a timestamp to relative time.
+ * @param isoDate - ISO datetime string
+ * @returns Relative time string (e.g., "2 days ago")
+ */
+function formatRelativeTime(isoDate: string): string {
+  try {
+    const date = new Date(isoDate);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  } catch {
+    return isoDate;
+  }
+}
+
+/**
+ * Maps request status to badge variant.
+ */
+function mapRequestStatusToBadge(status: string): BadgeVariant {
+  switch (status) {
+    case 'PENDING':
+      return 'pending';
+    case 'APPROVED':
+      return 'approved';
+    case 'REJECTED':
+      return 'rejected';
+    default:
+      return 'pending';
+  }
+}
 
 interface TeamMember {
   id: string;
   initials: string;
+  name: string;
 }
 
 const TEAM_OVERFLOW = 2;
@@ -45,12 +108,20 @@ export default function EmployeeProjectDetailScreen(): React.ReactElement {
   const { data: project, isLoading, isError } = useProject(id ?? '');
   const [tab, setTab] = useState<Tab>('Overview');
 
+  // Fetch project-specific data
+  const { data: uploads, isLoading: isLoadingUploads } = useProjectUploads(id ?? '');
+  const { data: progressLogs, isLoading: isLoadingProgress } = useProjectProgressLogs(id ?? '');
+  const { data: requests, isLoading: isLoadingRequests } = useProjectRequests(id ?? '');
+
   // Map team members from API to display format
   const teamMembers: TeamMember[] =
     project?.team?.slice(0, 3).map((member) => ({
       id: member.id,
       initials: `${member.firstName[0]}${member.lastName[0]}`.toUpperCase(),
+      name: `${member.firstName} ${member.lastName}`,
     })) ?? [];
+
+  const teamOverflowCount = Math.max(0, (project?.team?.length ?? 0) - 3);
 
   // Show loading state
   if (isLoading) {
@@ -189,14 +260,18 @@ export default function EmployeeProjectDetailScreen(): React.ReactElement {
                 <View style={styles.dateRow}>
                   <View style={styles.dateCol}>
                     <Text style={styles.dateLabel}>Start Date</Text>
-                    <Text style={styles.dateValue}>{project.startDate}</Text>
+                    <Text style={styles.dateValue}>{formatDate(project.startDate)}</Text>
                   </View>
 
                   <View style={styles.dateDivider} />
 
                   <View style={[styles.dateCol, styles.dateColEnd]}>
                     <Text style={styles.dateLabel}>Target End</Text>
-                    <Text style={styles.dateValue}>{project.targetEnd}</Text>
+                    <Text style={styles.dateValue}>
+                      {project.targetEnd && project.targetEnd !== 'Not set'
+                        ? formatDate(project.targetEnd)
+                        : 'Not set'}
+                    </Text>
                   </View>
                 </View>
 
@@ -233,24 +308,33 @@ export default function EmployeeProjectDetailScreen(): React.ReactElement {
                       />
                     ))}
 
-                    {TEAM_OVERFLOW > 0 && (
+                    {teamOverflowCount > 0 && (
                       <View style={[styles.overflowChip, styles.avatarOverlap]}>
-                        <Text style={styles.overflowText}>+{TEAM_OVERFLOW}</Text>
+                        <Text style={styles.overflowText}>+{teamOverflowCount}</Text>
                       </View>
                     )}
                   </View>
 
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    style={styles.viewAllBtn}
-                  >
-                    <Text style={styles.viewAllText}>View All</Text>
-                    <Icon
-                      name="chevronRight"
-                      size="sm"
-                      color={Colors.primaryDark}
-                    />
-                  </TouchableOpacity>
+                  {project?.team && project.team.length > 0 && (
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      style={styles.viewAllBtn}
+                      onPress={() => {
+                        // Show all team members modal/sheet (future enhancement)
+                        Alert.alert(
+                          'Team Members',
+                          project.team.map((m) => `${m.firstName} ${m.lastName}`).join('\n'),
+                        );
+                      }}
+                    >
+                      <Text style={styles.viewAllText}>View All</Text>
+                      <Icon
+                        name="chevronRight"
+                        size="sm"
+                        color={Colors.primaryDark}
+                      />
+                    </TouchableOpacity>
+                  )}
                 </View>
               </Card>
             </View>
@@ -260,9 +344,41 @@ export default function EmployeeProjectDetailScreen(): React.ReactElement {
             <View style={styles.sectionStack}>
               <Card style={styles.section}>
                 <Text style={styles.sectionLabel}>SITE PHOTOS</Text>
-                <Text style={styles.placeholderText}>
-                  No photos uploaded for this project yet.
-                </Text>
+                {isLoadingUploads ? (
+                  <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="small" color={Colors.primary} />
+                  </View>
+                ) : uploads && uploads.length > 0 ? (
+                  <View style={styles.photoGrid}>
+                    {uploads.map((upload) => (
+                      <TouchableOpacity
+                        key={upload.id}
+                        activeOpacity={0.7}
+                        style={styles.photoThumb}
+                        onPress={() => {
+                          // Future: Open full-screen image viewer
+                          Alert.alert('Photo', `Uploaded ${formatRelativeTime(upload.createdAt)}`);
+                        }}
+                      >
+                        {upload.resourceType === 'image' ? (
+                          <Image
+                            source={{ uri: upload.url }}
+                            style={styles.photoImage}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <View style={styles.photoPlaceholder}>
+                            <Icon name="photo" size="xl" color={Colors.textMuted} />
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                ) : (
+                  <Text style={styles.placeholderText}>
+                    No photos uploaded for this project yet.
+                  </Text>
+                )}
               </Card>
             </View>
           )}
@@ -271,16 +387,60 @@ export default function EmployeeProjectDetailScreen(): React.ReactElement {
             <View style={styles.sectionStack}>
               <Card style={styles.section}>
                 <Text style={styles.sectionLabel}>WORK PROGRESS</Text>
-                <Text style={styles.placeholderText}>
-                  No progress entries logged for this project yet.
-                </Text>
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  style={styles.tabNavBtn}
-                  onPress={() => router.push('/(employee)/progress')}
-                >
-                  <Text style={styles.tabNavBtnText}>Log Progress</Text>
-                </TouchableOpacity>
+                {isLoadingProgress ? (
+                  <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="small" color={Colors.primary} />
+                  </View>
+                ) : progressLogs && progressLogs.length > 0 ? (
+                  <>
+                    {progressLogs.map((log, index) => (
+                      <View
+                        key={log.id}
+                        style={[
+                          styles.progressLogRow,
+                          index < progressLogs.length - 1 && styles.progressLogBorder,
+                        ]}
+                      >
+                        <View style={styles.progressLogHeader}>
+                          <Text style={styles.progressLogTitle} numberOfLines={1}>
+                            {log.title}
+                          </Text>
+                          {log.workStage && (
+                            <View style={styles.workStageChip}>
+                              <Text style={styles.workStageText}>{log.workStage}</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={styles.progressLogDesc} numberOfLines={2}>
+                          {log.description}
+                        </Text>
+                        <Text style={styles.progressLogDate}>
+                          {formatRelativeTime(log.createdAt)}
+                        </Text>
+                      </View>
+                    ))}
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      style={styles.tabNavBtn}
+                      onPress={() => router.push('/(employee)/progress')}
+                    >
+                      <Text style={styles.tabNavBtnText}>Log New Progress</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.placeholderText}>
+                      No progress entries logged for this project yet.
+                    </Text>
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      style={styles.tabNavBtn}
+                      onPress={() => router.push('/(employee)/progress')}
+                    >
+                      <Text style={styles.tabNavBtnText}>Log Progress</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
               </Card>
             </View>
           )}
@@ -289,16 +449,64 @@ export default function EmployeeProjectDetailScreen(): React.ReactElement {
             <View style={styles.sectionStack}>
               <Card style={styles.section}>
                 <Text style={styles.sectionLabel}>PROJECT REQUESTS</Text>
-                <Text style={styles.placeholderText}>
-                  No requests raised for this project yet.
-                </Text>
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  style={styles.tabNavBtn}
-                  onPress={() => router.push('/(employee)/requests')}
-                >
-                  <Text style={styles.tabNavBtnText}>Raise Request</Text>
-                </TouchableOpacity>
+                {isLoadingRequests ? (
+                  <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="small" color={Colors.primary} />
+                  </View>
+                ) : requests && requests.length > 0 ? (
+                  <>
+                    {requests.map((request, index) => (
+                      <View
+                        key={request.id}
+                        style={[
+                          styles.requestRow,
+                          index < requests.length - 1 && styles.requestBorder,
+                        ]}
+                      >
+                        <View style={styles.requestHeader}>
+                          <View style={styles.flex1}>
+                            <Text style={styles.requestSubject} numberOfLines={1}>
+                              {request.subject}
+                            </Text>
+                            <Text style={styles.requestType}>
+                              {request.type} • {request.priority}
+                            </Text>
+                          </View>
+                          <Badge
+                            variant={mapRequestStatusToBadge(request.status)}
+                            label={request.status}
+                          />
+                        </View>
+                        <Text style={styles.requestDesc} numberOfLines={2}>
+                          {request.description}
+                        </Text>
+                        <Text style={styles.requestDate}>
+                          {formatRelativeTime(request.createdAt)}
+                        </Text>
+                      </View>
+                    ))}
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      style={styles.tabNavBtn}
+                      onPress={() => router.push('/(employee)/requests')}
+                    >
+                      <Text style={styles.tabNavBtnText}>Raise New Request</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.placeholderText}>
+                      No requests raised for this project yet.
+                    </Text>
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      style={styles.tabNavBtn}
+                      onPress={() => router.push('/(employee)/requests')}
+                    >
+                      <Text style={styles.tabNavBtnText}>Raise Request</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
               </Card>
             </View>
           )}
@@ -549,11 +757,124 @@ const styles = StyleSheet.create({
     color: Colors.textOnPrimary,
   },
 
-  // Loading and error states
-  loadingContainer: {
-    flex: 1,
+  // Photo grid — 3 columns
+  photoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing[2],
+  },
+  photoThumb: {
+    width: '31.5%',
+    aspectRatio: 1,
+    borderRadius: BorderRadius.btn,
+    overflow: 'hidden',
+    backgroundColor: Colors.background,
+  },
+  photoImage: {
+    width: '100%',
+    height: '100%',
+  },
+  photoPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: withAlpha(Colors.primary, 0.06),
     alignItems: 'center',
     justifyContent: 'center',
+  },
+
+  // Progress log rows
+  progressLogRow: {
+    gap: Spacing[1],
+    paddingBottom: Spacing[3],
+  },
+  progressLogBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    marginBottom: Spacing[3],
+  },
+  progressLogHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing[2],
+  },
+  progressLogTitle: {
+    flex: 1,
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.md,
+    lineHeight: 20,
+    color: Colors.primaryDark,
+  },
+  workStageChip: {
+    paddingHorizontal: Spacing[2],
+    paddingVertical: 2,
+    borderRadius: BorderRadius.badge,
+    backgroundColor: withAlpha(Colors.accent, 0.12),
+  },
+  workStageText: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.xs,
+    color: Colors.accent,
+  },
+  progressLogDesc: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.sm,
+    lineHeight: 18,
+    color: Colors.textSecondary,
+  },
+  progressLogDate: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+  },
+
+  // Request rows
+  requestRow: {
+    gap: Spacing[1],
+    paddingBottom: Spacing[3],
+  },
+  requestBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    marginBottom: Spacing[3],
+  },
+  requestHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing[2],
+  },
+  flex1: {
+    flex: 1,
+  },
+  requestSubject: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.md,
+    lineHeight: 20,
+    color: Colors.primaryDark,
+  },
+  requestType: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    marginTop: 2,
+  },
+  requestDesc: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.sm,
+    lineHeight: 18,
+    color: Colors.textSecondary,
+  },
+  requestDate: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+  },
+
+  // Loading and error states
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing[4],
   },
   errorContainer: {
     flex: 1,

@@ -20,8 +20,22 @@ export function useUploadFile() {
 
   return useMutation({
     mutationFn: uploadsService.uploadFile,
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      // Invalidate employee's own uploads (gallery)
       queryClient.invalidateQueries({ queryKey: queryKeys.uploads.my });
+
+      // Invalidate project-specific uploads for both employee and admin views
+      const projectId = variables.projectId;
+      if (projectId) {
+        // Employee project uploads
+        queryClient.invalidateQueries({
+          queryKey: [...queryKeys.uploads.my, projectId]
+        });
+        // Admin project uploads
+        queryClient.invalidateQueries({
+          queryKey: ['uploads', 'admin', projectId]
+        });
+      }
     },
   });
 }
