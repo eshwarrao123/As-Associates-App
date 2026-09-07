@@ -87,16 +87,17 @@ model User {
 }
 
 model Project {
-  id          String        @id @default(uuid())
-  name        String
-  clientName  String
-  location    String
-  status      ProjectStatus @default(ONGOING)
-  startDate   DateTime      @db.Timestamptz
-  endDate     DateTime?     @db.Timestamptz
-  description String?
-  createdAt   DateTime      @default(now()) @db.Timestamptz
-  updatedAt   DateTime      @updatedAt @db.Timestamptz
+  id              String        @id @default(uuid())
+  name            String
+  clientName      String
+  location        String
+  status          ProjectStatus @default(ONGOING)
+  startDate       DateTime      @db.Timestamptz
+  endDate         DateTime?     @db.Timestamptz
+  description     String?
+  progressPercent Int           @default(0) // Admin's assessment of overall physical completion (0-100%)
+  createdAt       DateTime      @default(now()) @db.Timestamptz
+  updatedAt       DateTime      @updatedAt @db.Timestamptz
 
   assignments  Assignment[]
   progressLogs ProgressLog[]

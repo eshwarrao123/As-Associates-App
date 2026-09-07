@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View, Image } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Image } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar } from '../../../src/components/ui/Avatar';
@@ -9,7 +9,7 @@ import { Card } from '../../../src/components/ui/Card';
 import { ProgressBar } from '../../../src/components/ui/ProgressBar';
 import { AdminBottomNav } from '../../../src/components/ui/AdminBottomNav';
 import { Icon } from '../../../src/components/ui/Icon';
-import { useAdminProject, useDeleteProject } from '../../../src/hooks/useAdminProjects';
+import { useAdminProject, useDeleteProject, useUpdateProject } from '../../../src/hooks/useAdminProjects';
 import { useAdminProgressLogs } from '../../../src/hooks/useProgressLogs';
 import { useAdminProjectUploads } from '../../../src/hooks/useAdminProjectUploads';
 import { getErrorMessage } from '../../../src/services/api/errorHandler';
@@ -53,11 +53,14 @@ export default function ProjectDetailScreen(): React.ReactElement {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [tab, setTab] = useState<Tab>('Overview');
+  const [editingProgress, setEditingProgress] = useState(false);
+  const [progressInput, setProgressInput] = useState('');
 
   const { data: project, isLoading, error } = useAdminProject(id ?? '');
   const { data: progressLogs, isLoading: isLoadingProgress } = useAdminProgressLogs(id);
   const { data: uploads, isLoading: isLoadingUploads } = useAdminProjectUploads(id ?? '');
   const deleteProject = useDeleteProject();
+  const updateProject = useUpdateProject();
 
   const handleDelete = () => {
     Alert.alert('Delete Project', 'This cannot be undone. Continue?', [
@@ -77,6 +80,36 @@ export default function ProjectDetailScreen(): React.ReactElement {
         },
       },
     ]);
+  };
+
+  const handleProgressEdit = () => {
+    setProgressInput(String(project?.progress ?? 0));
+    setEditingProgress(true);
+  };
+
+  const handleProgressSave = () => {
+    const value = parseInt(progressInput, 10);
+    if (isNaN(value) || value < 0 || value > 100) {
+      Alert.alert('Invalid Input', 'Progress must be between 0 and 100.');
+      return;
+    }
+
+    updateProject.mutate(
+      { id: id ?? '', data: { progressPercent: value } },
+      {
+        onSuccess: () => {
+          setEditingProgress(false);
+        },
+        onError: (err) => {
+          Alert.alert('Error', getErrorMessage(err));
+        },
+      },
+    );
+  };
+
+  const handleProgressCancel = () => {
+    setEditingProgress(false);
+    setProgressInput('');
   };
 
   if (isLoading) {
@@ -177,6 +210,61 @@ export default function ProjectDetailScreen(): React.ReactElement {
                   </View>
                 ))}
               </Card>
+
+              <Card style={styles.section}>
+                <View style={styles.progressEditHeader}>
+                  <Text style={styles.sectionLabel}>PROJECT PROGRESS</Text>
+                  {!editingProgress && (
+                    <TouchableOpacity onPress={handleProgressEdit} hitSlop={8}>
+                      <Icon name="edit" size="sm" color={Colors.primary} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+                <Text style={styles.progressNote}>
+                  Admin's assessment of overall physical project completion (0–100%).
+                </Text>
+                {editingProgress ? (
+                  <View style={styles.progressEditRow}>
+                    <TextInput
+                      style={styles.progressInput}
+                      value={progressInput}
+                      onChangeText={setProgressInput}
+                      keyboardType="number-pad"
+                      placeholder="0-100"
+                      maxLength={3}
+                      autoFocus
+                    />
+                    <TouchableOpacity
+                      style={styles.progressSaveBtn}
+                      onPress={handleProgressSave}
+                      disabled={updateProject.isPending}
+                    >
+                      {updateProject.isPending ? (
+                        <ActivityIndicator size="small" color={Colors.textOnPrimary} />
+                      ) : (
+                        <Text style={styles.progressSaveBtnText}>Save</Text>
+                      )}
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.progressCancelBtn}
+                      onPress={handleProgressCancel}
+                      disabled={updateProject.isPending}
+                    >
+                      <Text style={styles.progressCancelBtnText}>Cancel</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.progressDisplayRow}>
+                    <ProgressBar
+                      value={project?.progress ?? 0}
+                      showLabel={false}
+                      style={styles.flex1}
+                    />
+                    <Text style={styles.progressPctLarge}>{project?.progress ?? 0}%</Text>
+                  </View>
+                )}
+              </Card>
+
               <Button
                 label="Delete Project"
                 variant="outline"
@@ -545,5 +633,75 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.regular,
     fontSize: FontSize.md,
     color: Colors.textSecondary,
+  },
+
+  // Progress edit UI
+  progressEditHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  progressNote: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
+    lineHeight: 18,
+  },
+  progressEditRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing[2],
+  },
+  progressInput: {
+    flex: 1,
+    height: 48,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: BorderRadius.btn,
+    paddingHorizontal: Spacing[3],
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.lg,
+    color: Colors.textPrimary,
+    backgroundColor: Colors.surface,
+  },
+  progressSaveBtn: {
+    height: 48,
+    paddingHorizontal: Spacing[4],
+    borderRadius: BorderRadius.btn,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  progressSaveBtnText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.md,
+    color: Colors.textOnPrimary,
+  },
+  progressCancelBtn: {
+    height: 48,
+    paddingHorizontal: Spacing[4],
+    borderRadius: BorderRadius.btn,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  progressCancelBtnText: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.md,
+    color: Colors.textSecondary,
+  },
+  progressDisplayRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing[2],
+  },
+  progressPctLarge: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.xl,
+    color: Colors.primary,
+    minWidth: 48,
+    textAlign: 'right',
   },
 });

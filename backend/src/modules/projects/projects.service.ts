@@ -24,6 +24,7 @@ export class ProjectsService {
         status: 'ONGOING',
         startDate: dto.startDate || new Date(),
         endDate: dto.endDate,
+        progressPercent: 0, // New projects default to 0%
       },
       select: {
         id: true,
@@ -33,6 +34,7 @@ export class ProjectsService {
         status: true,
         startDate: true,
         endDate: true,
+        progressPercent: true,
         createdAt: true,
       },
     });
@@ -80,6 +82,7 @@ export class ProjectsService {
           status: true,
           startDate: true,
           endDate: true,
+          progressPercent: true,
           createdAt: true,
           _count: {
             select: { assignments: { where: { isActive: true } } },
@@ -113,6 +116,7 @@ export class ProjectsService {
         startDate: true,
         endDate: true,
         clientName: true,
+        progressPercent: true,
         createdAt: true,
         updatedAt: true,
         assignments: {
@@ -160,6 +164,7 @@ export class ProjectsService {
         status: dto.status,
         startDate: dto.startDate,
         endDate: dto.endDate,
+        progressPercent: dto.progressPercent,
       },
       select: {
         id: true,
@@ -169,6 +174,7 @@ export class ProjectsService {
         status: true,
         startDate: true,
         endDate: true,
+        progressPercent: true,
         updatedAt: true,
       },
     });

@@ -61,7 +61,7 @@ function mapProjectResponse(project: ProjectResponse) {
     client: project.clientName,
     location: project.location,
     status: mapStatusToBadgeVariant(project.status),
-    progress: 0, // Backend does not return progressPercent yet
+    progress: project.progressPercent ?? 0,
     startDate: project.startDate,
     endDate: project.endDate ?? '',
   };
@@ -105,7 +105,7 @@ export async function getProjectById(id: string) {
     scope: project.description ?? 'No description provided.',
     startDate: project.startDate,
     targetEnd: project.endDate ?? 'Not set',
-    progress: 0, // Backend does not return progressPercent yet
+    progress: project.progressPercent ?? 0,
     team: project.assignments?.map((a) => a.user) ?? [],
   };
 }
@@ -159,6 +159,7 @@ export async function updateProject(
     endDate?: string;
     budget?: number;
     status?: string;
+    progressPercent?: number;
   },
 ) {
   const response = await apiClient.patch<{ data: ProjectResponse }>(

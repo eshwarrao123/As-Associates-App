@@ -1,4 +1,4 @@
-import { IsString, IsOptional, MaxLength, IsNumber, IsPositive, IsEnum } from 'class-validator';
+import { IsString, IsOptional, MaxLength, IsNumber, IsPositive, IsEnum, Min, Max, IsInt } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ProjectStatus } from '@prisma/client';
 
@@ -34,4 +34,10 @@ export class UpdateProjectDto {
   @IsPositive()
   @IsOptional()
   budget?: number;
+
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  @IsOptional()
+  progressPercent?: number;
 }
