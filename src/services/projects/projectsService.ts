@@ -14,9 +14,20 @@ interface ProjectResponse {
   endDate?: string; // YYYY-MM-DD
   status: 'ONGOING' | 'COMPLETED' | 'UPCOMING' | 'ON_HOLD';
   progressPercent?: number;
+  services?: string[];
+  customService?: string;
+  assignments?: Array<{
+    user: {
+      id: string;
+      firstName: string;
+      lastName: string;
+    };
+  }>;
 }
 
 interface ProjectDetailResponse extends ProjectResponse {
+  services?: string[];
+  customService?: string;
   assignments?: Array<{
     id: string;
     createdAt: string;
@@ -106,6 +117,8 @@ export async function getProjectById(id: string) {
     startDate: project.startDate,
     targetEnd: project.endDate ?? 'Not set',
     progress: project.progressPercent ?? 0,
+    services: project.services ?? [],
+    customService: project.customService,
     team: project.assignments?.map((a) => a.user) ?? [],
   };
 }

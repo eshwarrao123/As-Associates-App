@@ -95,6 +95,8 @@ model Project {
   startDate       DateTime      @db.Timestamptz
   endDate         DateTime?     @db.Timestamptz
   description     String?
+  services        String[]      // Standard service categories (e.g., ["Civil", "Electrical", "Painting"])
+  customService   String?       // Custom service/category when "Other" is selected
   progressPercent Int           @default(0) // Admin's assessment of overall physical completion (0-100%)
   createdAt       DateTime      @default(now()) @db.Timestamptz
   updatedAt       DateTime      @updatedAt @db.Timestamptz

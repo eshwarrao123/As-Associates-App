@@ -89,8 +89,10 @@ export default function AdminProjectsScreen(): React.ReactElement {
     client: proj.clientName,
     city: proj.location,
     status: mapApiStatusToFilter(proj.status),
-    progress: 0, // Backend does not return progressPercent yet
-    engineers: [], // Will be populated from assignments API when needed
+    progress: proj.progressPercent ?? 0,
+    engineers: proj.assignments?.map((a) =>
+      `${a.user.firstName[0]}${a.user.lastName[0]}`.toUpperCase()
+    ) ?? [],
   })) ?? [];
 
   // Client-side filtering

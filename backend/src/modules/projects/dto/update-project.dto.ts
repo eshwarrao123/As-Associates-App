@@ -1,4 +1,4 @@
-import { IsString, IsOptional, MaxLength, IsNumber, IsPositive, IsEnum, Min, Max, IsInt } from 'class-validator';
+import { IsString, IsOptional, MaxLength, IsNumber, IsPositive, IsEnum, Min, Max, IsInt, IsArray } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ProjectStatus } from '@prisma/client';
 
@@ -10,6 +10,11 @@ export class UpdateProjectDto {
 
   @IsString()
   @IsOptional()
+  @MaxLength(200)
+  clientName?: string;
+
+  @IsString()
+  @IsOptional()
   @MaxLength(1000)
   description?: string;
 
@@ -17,6 +22,16 @@ export class UpdateProjectDto {
   @IsOptional()
   @MaxLength(300)
   location?: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  services?: string[];
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(200)
+  customService?: string;
 
   @IsEnum(ProjectStatus)
   @IsOptional()

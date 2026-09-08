@@ -253,6 +253,25 @@ export default function EmployeeProjectDetailScreen(): React.ReactElement {
                 <Text style={styles.scopeText}>{project.scope}</Text>
               </Card>
 
+              {/* ── Services Required ────────────────────────────────────── */}
+              {(project.services && project.services.length > 0) || project.customService ? (
+                <Card style={styles.section}>
+                  <Text style={styles.sectionLabel}>SERVICES REQUIRED</Text>
+                  <View style={styles.serviceChipWrap}>
+                    {project.services?.map((service) => (
+                      <View key={service} style={styles.serviceChip}>
+                        <Text style={styles.serviceChipText}>{service}</Text>
+                      </View>
+                    ))}
+                    {project.customService && (
+                      <View style={styles.serviceChip}>
+                        <Text style={styles.serviceChipText}>{project.customService}</Text>
+                      </View>
+                    )}
+                  </View>
+                </Card>
+              ) : null}
+
               {/* ── Timeline ────────────────────────────────────────────── */}
               <Card style={styles.section}>
                 <Text style={styles.sectionLabel}>TIMELINE</Text>
@@ -646,6 +665,25 @@ const styles = StyleSheet.create({
     fontSize: FontSize.md,
     lineHeight: 20,
     color: Colors.textSecondary,
+  },
+
+  // Service chips
+  serviceChipWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing[2],
+  },
+  serviceChip: {
+    paddingHorizontal: Spacing[3],
+    paddingVertical: 6,
+    borderRadius: BorderRadius.badge,
+    backgroundColor: withAlpha(Colors.primaryDark, 0.08),
+  },
+  serviceChipText: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.sm,
+    lineHeight: 16,
+    color: Colors.primaryDark,
   },
 
   // Timeline

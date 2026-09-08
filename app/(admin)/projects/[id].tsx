@@ -211,6 +211,25 @@ export default function ProjectDetailScreen(): React.ReactElement {
                 ))}
               </Card>
 
+              {/* Services Required section */}
+              {(project.services && project.services.length > 0) || project.customService ? (
+                <Card style={styles.section}>
+                  <Text style={styles.sectionLabel}>SERVICES REQUIRED</Text>
+                  <View style={styles.chipWrap}>
+                    {project.services?.map((service) => (
+                      <View key={service} style={styles.serviceChip}>
+                        <Text style={styles.serviceChipText}>{service}</Text>
+                      </View>
+                    ))}
+                    {project.customService && (
+                      <View style={styles.serviceChip}>
+                        <Text style={styles.serviceChipText}>{project.customService}</Text>
+                      </View>
+                    )}
+                  </View>
+                </Card>
+              ) : null}
+
               <Card style={styles.section}>
                 <View style={styles.progressEditHeader}>
                   <Text style={styles.sectionLabel}>PROJECT PROGRESS</Text>

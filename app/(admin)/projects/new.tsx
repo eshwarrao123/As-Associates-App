@@ -25,9 +25,6 @@ import {
 
 // ─── Static configuration ─────────────────────────────────────────────────────
 
-// Client options for this single-company internal app
-const CLIENT_OPTIONS = ['ICICI Bank', 'Axis Bank', 'HDFC Bank', 'Kotak Mahindra', 'Commercial', 'Residential'];
-
 // Service categories - domain-specific enum maintained as static config
 const SERVICES = [
   'Civil',
@@ -40,6 +37,7 @@ const SERVICES = [
   'Signage',
   'Flooring',
   'Fire Safety',
+  'Other',
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -52,9 +50,10 @@ export default function NewProjectScreen(): React.ReactElement {
   const { data: employeesData, isLoading: isLoadingEmployees } = useEmployees(1, 'ACTIVE');
 
   const [name, setName] = useState('');
-  const [client, setClient] = useState<string | null>(null);
+  const [client, setClient] = useState('');
   const [address, setAddress] = useState('');
   const [services, setServices] = useState<string[]>([]);
+  const [customService, setCustomService] = useState('');
   const [team, setTeam] = useState<string[]>([]);
   const [search, setSearch] = useState('');
   const [description, setDescription] = useState('');
@@ -69,9 +68,9 @@ export default function NewProjectScreen(): React.ReactElement {
   const toggleTeam = (id: string) =>
     setTeam((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
-  const handleStartDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
+  const handleStartDateChange = (_event: any, selectedDate?: Date) => {
     setShowStartPicker(false);
-    if (event.type === 'set' && selectedDate) {
+    if (selectedDate) {
       setStartDate(selectedDate);
       // If end date is set and is before the new start date, clear it
       if (endDate && selectedDate > endDate) {
@@ -80,9 +79,9 @@ export default function NewProjectScreen(): React.ReactElement {
     }
   };
 
-  const handleEndDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
+  const handleEndDateChange = (_event: any, selectedDate?: Date) => {
     setShowEndPicker(false);
-    if (event.type === 'set' && selectedDate) {
+    if (selectedDate) {
       // Validate that end date is not before start date
       if (selectedDate < startDate) {
         Alert.alert('Invalid Date', 'End date cannot be earlier than start date');
@@ -110,15 +109,26 @@ export default function NewProjectScreen(): React.ReactElement {
       Alert.alert('Error', 'Project name is required');
       return;
     }
+    if (!client.trim()) {
+      Alert.alert('Error', 'Client name is required');
+      return;
+    }
     if (!address.trim()) {
       Alert.alert('Error', 'Site address is required');
+      return;
+    }
+    if (services.includes('Other') && !customService.trim()) {
+      Alert.alert('Error', 'Please specify the custom service when "Other" is selected');
       return;
     }
 
     const formData = {
       name: name.trim(),
+      clientName: client.trim(),
       description: description.trim() || undefined,
       location: address.trim(),
+      services: services.filter((s) => s !== 'Other'),
+      customService: services.includes('Other') ? customService.trim() : undefined,
       startDate: formatLocalDateKey(startDate),
       endDate: endDate ? formatLocalDateKey(endDate) : undefined,
       budget: budget.trim() ? parseFloat(budget.replace(/[^0-9.]/g, '')) : undefined,
@@ -164,12 +174,12 @@ export default function NewProjectScreen(): React.ReactElement {
               onChangeText={setName}
               editable={!createProject.isPending}
             />
-            <Dropdown
-              label="Client"
-              placeholder="Select client"
+            <Input
+              label="Client Name"
+              placeholder="e.g. ICICI Bank"
               value={client}
-              options={CLIENT_OPTIONS}
-              onSelect={setClient}
+              onChangeText={setClient}
+              editable={!createProject.isPending}
             />
             <Input
               label="Site Address"
@@ -231,7 +241,8 @@ export default function NewProjectScreen(): React.ReactElement {
                 value={startDate}
                 mode="date"
                 display={Platform.OS === 'android' ? 'default' : 'spinner'}
-                onChange={handleStartDateChange}
+                onValueChange={handleStartDateChange}
+                onDismiss={() => setShowStartPicker(false)}
               />
             )}
             {showEndPicker && (
@@ -239,7 +250,8 @@ export default function NewProjectScreen(): React.ReactElement {
                 value={endDate || new Date()}
                 mode="date"
                 display={Platform.OS === 'android' ? 'default' : 'spinner'}
-                onChange={handleEndDateChange}
+                onValueChange={handleEndDateChange}
+                onDismiss={() => setShowEndPicker(false)}
                 minimumDate={startDate}
               />
             )}
@@ -267,6 +279,15 @@ export default function NewProjectScreen(): React.ReactElement {
                 );
               })}
             </View>
+            {services.includes('Other') && (
+              <Input
+                label="Specify Custom Service"
+                placeholder="e.g. Landscaping, Waterproofing"
+                value={customService}
+                onChangeText={setCustomService}
+                editable={!createProject.isPending}
+              />
+            )}
           </Card>
 
           {/* Assign team */}

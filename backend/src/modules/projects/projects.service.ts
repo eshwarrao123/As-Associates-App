@@ -18,9 +18,11 @@ export class ProjectsService {
     const project = await this.prisma.project.create({
       data: {
         name: dto.name,
+        clientName: dto.clientName,
         description: dto.description,
         location: dto.location || '',
-        clientName: '',
+        services: dto.services || [],
+        customService: dto.customService,
         status: 'ONGOING',
         startDate: dto.startDate || new Date(),
         endDate: dto.endDate,
@@ -29,8 +31,11 @@ export class ProjectsService {
       select: {
         id: true,
         name: true,
+        clientName: true,
         description: true,
         location: true,
+        services: true,
+        customService: true,
         status: true,
         startDate: true,
         endDate: true,
@@ -83,9 +88,21 @@ export class ProjectsService {
           startDate: true,
           endDate: true,
           progressPercent: true,
+          clientName: true,
+          services: true,
+          customService: true,
           createdAt: true,
-          _count: {
-            select: { assignments: { where: { isActive: true } } },
+          assignments: {
+            where: { isActive: true },
+            select: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                },
+              },
+            },
           },
         },
       }),
@@ -116,6 +133,8 @@ export class ProjectsService {
         startDate: true,
         endDate: true,
         clientName: true,
+        services: true,
+        customService: true,
         progressPercent: true,
         createdAt: true,
         updatedAt: true,
@@ -159,8 +178,11 @@ export class ProjectsService {
       where: { id },
       data: {
         name: dto.name,
+        clientName: dto.clientName,
         description: dto.description,
         location: dto.location,
+        services: dto.services,
+        customService: dto.customService,
         status: dto.status,
         startDate: dto.startDate,
         endDate: dto.endDate,
@@ -169,8 +191,11 @@ export class ProjectsService {
       select: {
         id: true,
         name: true,
+        clientName: true,
         description: true,
         location: true,
+        services: true,
+        customService: true,
         status: true,
         startDate: true,
         endDate: true,
