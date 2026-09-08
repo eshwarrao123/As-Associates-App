@@ -89,6 +89,11 @@ export class UsersService {
       ];
     }
 
+    // Calculate current month date range (UTC)
+    const now = new Date();
+    const currentMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const currentMonthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999));
+
     const [users, total] = await this.prisma.$transaction([
       this.prisma.user.findMany({
         where,
@@ -112,9 +117,19 @@ export class UsersService {
               assignments: true,
               attendanceLogs: {
                 where: {
-                  OR: [
-                    { status: 'PRESENT' },
-                    { status: 'HALF_DAY' },
+                  AND: [
+                    {
+                      OR: [
+                        { status: 'PRESENT' },
+                        { status: 'HALF_DAY' },
+                      ],
+                    },
+                    {
+                      date: {
+                        gte: currentMonthStart,
+                        lte: currentMonthEnd,
+                      },
+                    },
                   ],
                 },
               },
@@ -138,6 +153,11 @@ export class UsersService {
 
   // ─── Admin: Get one employee ────────────────────────────────────────────────
   async getUserById(id: string) {
+    // Calculate current month date range (UTC)
+    const now = new Date();
+    const currentMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const currentMonthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999));
+
     const user = await this.prisma.user.findUnique({
       where: { id },
       select: {
@@ -171,9 +191,19 @@ export class UsersService {
             assignments: { where: { isActive: true } },
             attendanceLogs: {
               where: {
-                OR: [
-                  { status: 'PRESENT' },
-                  { status: 'HALF_DAY' },
+                AND: [
+                  {
+                    OR: [
+                      { status: 'PRESENT' },
+                      { status: 'HALF_DAY' },
+                    ],
+                  },
+                  {
+                    date: {
+                      gte: currentMonthStart,
+                      lte: currentMonthEnd,
+                    },
+                  },
                 ],
               },
             },
@@ -253,6 +283,11 @@ export class UsersService {
 
   // ─── Employee: Get own profile ──────────────────────────────────────────────
   async getMe(userId: string) {
+    // Calculate current month date range (UTC)
+    const now = new Date();
+    const currentMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const currentMonthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999));
+
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -273,9 +308,19 @@ export class UsersService {
             assignments: { where: { isActive: true } },
             attendanceLogs: {
               where: {
-                OR: [
-                  { status: 'PRESENT' },
-                  { status: 'HALF_DAY' },
+                AND: [
+                  {
+                    OR: [
+                      { status: 'PRESENT' },
+                      { status: 'HALF_DAY' },
+                    ],
+                  },
+                  {
+                    date: {
+                      gte: currentMonthStart,
+                      lte: currentMonthEnd,
+                    },
+                  },
                 ],
               },
             },

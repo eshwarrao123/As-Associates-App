@@ -96,7 +96,8 @@ export default function ProfileScreen(): React.ReactElement {
   const uploadsCount = meData?._count?.uploads ?? 0;
   const attendanceCount = meData?._count?.attendanceLogs ?? 0;
 
-  // Format attendance as count (not percentage) since we don't have total working days in profile
+  // Current-month attendance count (matches Attendance screen for current month)
+  // Backend filters to PRESENT/HALF_DAY for current calendar month only
   const stats = [
     { label: 'Projects', value: String(projectsCount), color: Colors.primary },
     { label: 'Uploads', value: String(uploadsCount), color: Colors.primary },
