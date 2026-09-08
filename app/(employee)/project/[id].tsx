@@ -19,6 +19,7 @@ import { Avatar } from '../../../src/components/ui/Avatar';
 import { Badge } from '../../../src/components/ui/Badge';
 import { Card } from '../../../src/components/ui/Card';
 import { Icon } from '../../../src/components/ui/Icon';
+import { ImageViewer } from '../../../src/components/ui/ImageViewer';
 import { ProgressBar } from '../../../src/components/ui/ProgressBar';
 import {
   Colors,
@@ -107,6 +108,8 @@ export default function EmployeeProjectDetailScreen(): React.ReactElement {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: project, isLoading, isError } = useProject(id ?? '');
   const [tab, setTab] = useState<Tab>('Overview');
+  const [viewerVisible, setViewerVisible] = useState(false);
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
 
   // Fetch project-specific data
   const { data: uploads, isLoading: isLoadingUploads } = useProjectUploads(id ?? '');
@@ -339,11 +342,14 @@ export default function EmployeeProjectDetailScreen(): React.ReactElement {
                       activeOpacity={0.7}
                       style={styles.viewAllBtn}
                       onPress={() => {
-                        // Show all team members modal/sheet (future enhancement)
-                        Alert.alert(
-                          'Team Members',
-                          project.team.map((m) => `${m.firstName} ${m.lastName}`).join('\n'),
-                        );
+                        const teamList = project.team
+                          .map((m) => {
+                            const name = `${m.firstName} ${m.lastName}`;
+                            const designation = m.designation || 'Employee';
+                            return `${name}\n${designation}`;
+                          })
+                          .join('\n\n');
+                        Alert.alert('Team Members', teamList);
                       }}
                     >
                       <Text style={styles.viewAllText}>View All</Text>
@@ -369,14 +375,14 @@ export default function EmployeeProjectDetailScreen(): React.ReactElement {
                   </View>
                 ) : uploads && uploads.length > 0 ? (
                   <View style={styles.photoGrid}>
-                    {uploads.map((upload) => (
+                    {uploads.map((upload, index) => (
                       <TouchableOpacity
                         key={upload.id}
                         activeOpacity={0.7}
                         style={styles.photoThumb}
                         onPress={() => {
-                          // Future: Open full-screen image viewer
-                          Alert.alert('Photo', `Uploaded ${formatRelativeTime(upload.createdAt)}`);
+                          setSelectedPhotoIndex(index);
+                          setViewerVisible(true);
                         }}
                       >
                         {upload.resourceType === 'image' ? (
@@ -531,6 +537,16 @@ export default function EmployeeProjectDetailScreen(): React.ReactElement {
           )}
         </ScrollView>
       </SafeAreaView>
+
+      {/* Full-screen Image Viewer */}
+      {uploads && uploads.length > 0 && (
+        <ImageViewer
+          visible={viewerVisible}
+          images={uploads.map((upload) => ({ id: upload.id, url: upload.url }))}
+          initialIndex={selectedPhotoIndex}
+          onClose={() => setViewerVisible(false)}
+        />
+      )}
     </>
   );
 }

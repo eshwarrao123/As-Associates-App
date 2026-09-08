@@ -118,18 +118,18 @@ export default function GalleryScreen(): React.ReactElement {
   const router = useRouter();
   const [filter, setFilter] = useState<FilterKey>('all');
   const [viewerVisible, setViewerVisible] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState(0);
 
   const { data: uploads, isLoading, refetch } = useMyUploads();
 
   const handleImagePress = (item: GalleryItem) => {
-    setSelectedImage(item.url);
+    const index = galleryItems.findIndex((g) => g.id === item.id);
+    setSelectedIndex(index >= 0 ? index : 0);
     setViewerVisible(true);
   };
 
   const handleCloseViewer = () => {
     setViewerVisible(false);
-    setSelectedImage(null);
   };
 
   const galleryItems = useMemo(
@@ -202,13 +202,12 @@ export default function GalleryScreen(): React.ReactElement {
       </SafeAreaView>
 
       {/* ── Full-screen Image Viewer ──────────────────────────────────── */}
-      {selectedImage && (
-        <ImageViewer
-          visible={viewerVisible}
-          imageUrl={selectedImage}
-          onClose={handleCloseViewer}
-        />
-      )}
+      <ImageViewer
+        visible={viewerVisible}
+        images={galleryItems.map((item) => ({ id: item.id, url: item.url }))}
+        initialIndex={selectedIndex}
+        onClose={handleCloseViewer}
+      />
     </>
   );
 }

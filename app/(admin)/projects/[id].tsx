@@ -9,6 +9,7 @@ import { Card } from '../../../src/components/ui/Card';
 import { ProgressBar } from '../../../src/components/ui/ProgressBar';
 import { AdminBottomNav } from '../../../src/components/ui/AdminBottomNav';
 import { Icon } from '../../../src/components/ui/Icon';
+import { ImageViewer } from '../../../src/components/ui/ImageViewer';
 import { useAdminProject, useDeleteProject, useUpdateProject } from '../../../src/hooks/useAdminProjects';
 import { useAdminProgressLogs } from '../../../src/hooks/useProgressLogs';
 import { useAdminProjectUploads } from '../../../src/hooks/useAdminProjectUploads';
@@ -55,6 +56,8 @@ export default function ProjectDetailScreen(): React.ReactElement {
   const [tab, setTab] = useState<Tab>('Overview');
   const [editingProgress, setEditingProgress] = useState(false);
   const [progressInput, setProgressInput] = useState('');
+  const [viewerVisible, setViewerVisible] = useState(false);
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
 
   const { data: project, isLoading, error } = useAdminProject(id ?? '');
   const { data: progressLogs, isLoading: isLoadingProgress } = useAdminProgressLogs(id);
@@ -331,17 +334,14 @@ export default function ProjectDetailScreen(): React.ReactElement {
                 </View>
               ) : uploads && uploads.length > 0 ? (
                 <View style={styles.photoGrid}>
-                  {uploads.map((upload) => (
+                  {uploads.map((upload, index) => (
                     <TouchableOpacity
                       key={upload.id}
                       activeOpacity={0.7}
                       style={styles.photoThumb}
                       onPress={() => {
-                        // Future: Open full-screen image viewer
-                        Alert.alert(
-                          'Photo',
-                          `Uploaded by ${upload.user.firstName} ${upload.user.lastName}\n${new Date(upload.createdAt).toLocaleDateString('en-GB')}`,
-                        );
+                        setSelectedPhotoIndex(index);
+                        setViewerVisible(true);
                       }}
                     >
                       {upload.fileType === 'IMAGE' ? (
@@ -410,6 +410,16 @@ export default function ProjectDetailScreen(): React.ReactElement {
 
         <AdminBottomNav activeIndex={1} />
       </SafeAreaView>
+
+      {/* Full-screen Image Viewer */}
+      {uploads && uploads.length > 0 && (
+        <ImageViewer
+          visible={viewerVisible}
+          images={uploads.map((upload) => ({ id: upload.id, url: upload.fileUrl }))}
+          initialIndex={selectedPhotoIndex}
+          onClose={() => setViewerVisible(false)}
+        />
+      )}
     </>
   );
 }

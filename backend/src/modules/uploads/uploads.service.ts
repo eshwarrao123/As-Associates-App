@@ -246,6 +246,67 @@ export class UploadsService {
     };
   }
 
+  // ─── Employee: Get all uploads for an assigned project ──────────────────────
+  async getProjectUploads(
+    projectId: string,
+    userId: string,
+    query: { page?: number; limit?: number },
+  ) {
+    const { page = 1, limit = 20 } = query;
+    const skip = (page - 1) * limit;
+
+    // Verify employee is assigned to this project
+    const assignment = await this.prisma.assignment.findFirst({
+      where: {
+        userId,
+        projectId,
+        isActive: true,
+      },
+    });
+
+    if (!assignment) {
+      throw new BadRequestException('Not assigned to this project');
+    }
+
+    // Get all uploads for this project
+    const [uploads, total] = await this.prisma.$transaction([
+      this.prisma.upload.findMany({
+        where: { projectId },
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          storageKey: true,
+          fileUrl: true,
+          fileType: true,
+          mimeType: true,
+          fileName: true,
+          fileSizeBytes: true,
+          createdAt: true,
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
+        },
+      }),
+      this.prisma.upload.count({ where: { projectId } }),
+    ]);
+
+    return {
+      data: uploads,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
   // ─── Admin: Delete upload ───────────────────────────────────────────────────
   async deleteUpload(id: string) {
     const upload = await this.prisma.upload.findUnique({

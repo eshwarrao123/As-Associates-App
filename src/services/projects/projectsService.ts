@@ -36,6 +36,7 @@ interface ProjectDetailResponse extends ProjectResponse {
       firstName: string;
       lastName: string;
       employeeCode?: string;
+      designation?: string;
     };
   }>;
   recentProgressLogs?: unknown[];
@@ -148,6 +149,7 @@ export async function createProject(data: {
   startDate: string; // ISO date string
   endDate?: string;
   budget?: number;
+  progressPercent?: number;
 }) {
   const response = await apiClient.post<{ data: ProjectResponse }>(
     '/projects',

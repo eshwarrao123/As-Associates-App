@@ -55,33 +55,33 @@ enum RequestStatus {
 }
 
 model User {
-  id               String     @id @default(uuid())
-  email            String     @unique
-  passwordHash     String?
-  firstName        String
-  lastName         String
-  role             Role       @default(EMPLOYEE)
-  status           UserStatus @default(PENDING)
-  employeeCode     String     @unique
-  phone            String?
-  designation      String?
-  photoUrl         String?
-  mustChangePassword Boolean  @default(true)
-  setupTokenHash   String?
-  createdById      String?
-  createdAt        DateTime   @default(now()) @db.Timestamptz
-  updatedAt        DateTime   @updatedAt @db.Timestamptz
+  id                 String     @id @default(uuid())
+  email              String     @unique
+  passwordHash       String?
+  firstName          String
+  lastName           String
+  role               Role       @default(EMPLOYEE)
+  status             UserStatus @default(PENDING)
+  employeeCode       String     @unique
+  phone              String?
+  designation        String?
+  photoUrl           String?
+  mustChangePassword Boolean    @default(true)
+  setupTokenHash     String?
+  createdById        String?
+  createdAt          DateTime   @default(now()) @db.Timestamptz
+  updatedAt          DateTime   @updatedAt @db.Timestamptz
 
-  createdBy           User?         @relation("CreatedByUser", fields: [createdById], references: [id], onDelete: SetNull)
-  createdUsers        User[]        @relation("CreatedByUser")
-  assignments         Assignment[]  @relation("UserAssignments")
-  assignedAssignments Assignment[]  @relation("AssignedByUser")
+  createdBy           User?           @relation("CreatedByUser", fields: [createdById], references: [id], onDelete: SetNull)
+  createdUsers        User[]          @relation("CreatedByUser")
+  assignments         Assignment[]    @relation("UserAssignments")
+  assignedAssignments Assignment[]    @relation("AssignedByUser")
   attendanceLogs      AttendanceLog[]
   progressLogs        ProgressLog[]
   uploads             Upload[]
-  requests            Request[]     @relation("UserRequests")
+  requests            Request[]       @relation("UserRequests")
   refreshTokens       RefreshToken[]
-  reviewedRequests    Request[]     @relation("ReviewedRequests")
+  reviewedRequests    Request[]       @relation("ReviewedRequests")
 
   @@map("users")
 }
@@ -95,8 +95,8 @@ model Project {
   startDate       DateTime      @db.Timestamptz
   endDate         DateTime?     @db.Timestamptz
   description     String?
-  services        String[]      // Standard service categories (e.g., ["Civil", "Electrical", "Painting"])
-  customService   String?       // Custom service/category when "Other" is selected
+  services        String[] // Standard service categories (e.g., ["Civil", "Electrical", "Painting"])
+  customService   String? // Custom service/category when "Other" is selected
   progressPercent Int           @default(0) // Admin's assessment of overall physical completion (0-100%)
   createdAt       DateTime      @default(now()) @db.Timestamptz
   updatedAt       DateTime      @updatedAt @db.Timestamptz
@@ -110,34 +110,34 @@ model Project {
 }
 
 model Assignment {
-  id           String   @id @default(uuid())
+  id           String    @id @default(uuid())
   userId       String
   projectId    String
   assignedById String
-  isActive     Boolean  @default(true)
+  isActive     Boolean   @default(true)
   unassignedAt DateTime? @db.Timestamptz
   createdAt    DateTime  @default(now()) @db.Timestamptz
 
-  user         User     @relation("UserAssignments", fields: [userId], references: [id], onDelete: Cascade)
-  project      Project  @relation(fields: [projectId], references: [id], onDelete: Restrict)
-  assignedBy   User     @relation("AssignedByUser", fields: [assignedById], references: [id], onDelete: Restrict)
+  user       User    @relation("UserAssignments", fields: [userId], references: [id], onDelete: Cascade)
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  assignedBy User    @relation("AssignedByUser", fields: [assignedById], references: [id], onDelete: Restrict)
 
   @@unique([userId, projectId])
   @@map("assignments")
 }
 
 model AttendanceLog {
-  id          String           @id @default(uuid())
-  userId      String
-  date        DateTime         @db.Date
-  checkInTime DateTime?        @db.Timestamptz
-  checkOutTime DateTime?       @db.Timestamptz
-  status      AttendanceStatus @default(PRESENT)
-  latitude    Float?
-  longitude   Float?
-  createdAt   DateTime         @default(now()) @db.Timestamptz
+  id           String           @id @default(uuid())
+  userId       String
+  date         DateTime         @db.Date
+  checkInTime  DateTime?        @db.Timestamptz
+  checkOutTime DateTime?        @db.Timestamptz
+  status       AttendanceStatus @default(PRESENT)
+  latitude     Float?
+  longitude    Float?
+  createdAt    DateTime         @default(now()) @db.Timestamptz
 
-  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, date])
   @@map("attendance_logs")
@@ -153,9 +153,9 @@ model ProgressLog {
   date        DateTime @db.Date
   createdAt   DateTime @default(now()) @db.Timestamptz
 
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Restrict)
-  uploads     Upload[]
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project  @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  uploads Upload[]
 
   @@map("progress_logs")
 }
@@ -175,9 +175,9 @@ model Upload {
   caption       String?
   createdAt     DateTime @default(now()) @db.Timestamptz
 
-  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project       Project     @relation(fields: [projectId], references: [id], onDelete: Restrict)
-  progressLog   ProgressLog? @relation(fields: [progressLogId], references: [id], onDelete: SetNull)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  progressLog ProgressLog? @relation(fields: [progressLogId], references: [id], onDelete: SetNull)
 
   @@map("uploads")
 }
@@ -197,9 +197,9 @@ model Request {
   createdAt    DateTime        @default(now()) @db.Timestamptz
   updatedAt    DateTime        @updatedAt @db.Timestamptz
 
-  user         User            @relation("UserRequests", fields: [userId], references: [id], onDelete: Cascade)
-  project      Project         @relation(fields: [projectId], references: [id], onDelete: Restrict)
-  reviewedBy   User?           @relation("ReviewedRequests", fields: [reviewedById], references: [id], onDelete: SetNull)
+  user       User    @relation("UserRequests", fields: [userId], references: [id], onDelete: Cascade)
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  reviewedBy User?   @relation("ReviewedRequests", fields: [reviewedById], references: [id], onDelete: SetNull)
 
   @@map("requests")
 }
@@ -213,7 +213,7 @@ model RefreshToken {
   revokedAt DateTime? @db.Timestamptz
   createdAt DateTime  @default(now()) @db.Timestamptz
 
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("refresh_tokens")
 }

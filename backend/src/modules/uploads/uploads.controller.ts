@@ -73,6 +73,20 @@ export class UploadsController {
     });
   }
 
+  @Get('project/:projectId')
+  @Roles(Role.EMPLOYEE)
+  getProjectUploads(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @CurrentUser('sub') userId: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.uploadsService.getProjectUploads(projectId, userId, {
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 20,
+    });
+  }
+
   @Delete(':id')
   @Roles(Role.ADMIN)
   deleteUpload(@Param('id', ParseUUIDPipe) id: string) {

@@ -60,6 +60,7 @@ export default function NewProjectScreen(): React.ReactElement {
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [budget, setBudget] = useState('');
+  const [progressPercent, setProgressPercent] = useState('0');
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
 
@@ -122,6 +123,12 @@ export default function NewProjectScreen(): React.ReactElement {
       return;
     }
 
+    const progressValue = parseInt(progressPercent, 10);
+    if (isNaN(progressValue) || progressValue < 0 || progressValue > 100) {
+      Alert.alert('Error', 'Progress must be between 0 and 100');
+      return;
+    }
+
     const formData = {
       name: name.trim(),
       clientName: client.trim(),
@@ -132,6 +139,7 @@ export default function NewProjectScreen(): React.ReactElement {
       startDate: formatLocalDateKey(startDate),
       endDate: endDate ? formatLocalDateKey(endDate) : undefined,
       budget: budget.trim() ? parseFloat(budget.replace(/[^0-9.]/g, '')) : undefined,
+      progressPercent: progressValue,
     };
 
     createProject.mutate(formData, {
@@ -194,6 +202,14 @@ export default function NewProjectScreen(): React.ReactElement {
               value={budget}
               onChangeText={setBudget}
               keyboardType="numeric"
+              editable={!createProject.isPending}
+            />
+            <Input
+              label="Initial Progress (%)"
+              placeholder="0-100"
+              value={progressPercent}
+              onChangeText={setProgressPercent}
+              keyboardType="number-pad"
               editable={!createProject.isPending}
             />
             <View style={styles.dateRow}>

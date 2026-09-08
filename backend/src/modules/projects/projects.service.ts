@@ -26,7 +26,7 @@ export class ProjectsService {
         status: 'ONGOING',
         startDate: dto.startDate || new Date(),
         endDate: dto.endDate,
-        progressPercent: 0, // New projects default to 0%
+        progressPercent: dto.progressPercent ?? 0, // Admin can set initial progress, defaults to 0
       },
       select: {
         id: true,
@@ -149,6 +149,7 @@ export class ProjectsService {
                 firstName: true,
                 lastName: true,
                 employeeCode: true,
+                designation: true,
               },
             },
           },

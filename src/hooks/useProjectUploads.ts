@@ -5,15 +5,16 @@ import type { MyUploadResponse } from '../services/uploads/uploadsService';
 
 /**
  * Hook to fetch uploads for a specific project (employee view).
+ * Shows all project uploads from any team member.
  * @param projectId - Project ID
  * @returns Uploads for the project
  */
 export function useProjectUploads(projectId: string) {
   return useQuery({
-    queryKey: [...queryKeys.uploads.my, projectId],
+    queryKey: [...queryKeys.uploads.my, 'project', projectId],
     queryFn: async () => {
       const response = await apiClient.get<{ data: any[]; meta: unknown }>(
-        `/uploads/my?projectId=${projectId}`,
+        `/uploads/project/${projectId}`,
       );
       return response.data.data.map((upload: any) => ({
         id: upload.id,
@@ -21,7 +22,8 @@ export function useProjectUploads(projectId: string) {
         publicId: upload.storageKey,
         resourceType: upload.fileType,
         createdAt: upload.createdAt,
-      })) as MyUploadResponse[];
+        user: upload.user,
+      })) as (MyUploadResponse & { user?: { id: string; firstName: string; lastName: string } })[];
     },
     enabled: !!projectId,
   });

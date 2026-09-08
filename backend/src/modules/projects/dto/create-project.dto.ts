@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, MaxLength, IsNumber, IsPositive, IsArray } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, MaxLength, IsNumber, IsPositive, IsArray, IsInt, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateProjectDto {
@@ -44,4 +44,10 @@ export class CreateProjectDto {
   @IsPositive()
   @IsOptional()
   budget?: number;
+
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  @IsOptional()
+  progressPercent?: number;
 }
