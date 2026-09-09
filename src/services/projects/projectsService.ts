@@ -168,6 +168,7 @@ export async function updateProject(
   id: string,
   data: {
     name?: string;
+    clientName?: string;
     description?: string;
     location?: string;
     startDate?: string;
@@ -175,6 +176,8 @@ export async function updateProject(
     budget?: number;
     status?: string;
     progressPercent?: number;
+    services?: string[];
+    customService?: string;
   },
 ) {
   const response = await apiClient.patch<{ data: ProjectResponse }>(

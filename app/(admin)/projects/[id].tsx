@@ -288,6 +288,10 @@ export default function ProjectDetailScreen(): React.ReactElement {
               </Card>
 
               <Button
+                label="Edit Project Details"
+                onPress={() => router.push(`/(admin)/projects/${id}/edit` as never)}
+              />
+              <Button
                 label="Delete Project"
                 variant="outline"
                 onPress={handleDelete}
