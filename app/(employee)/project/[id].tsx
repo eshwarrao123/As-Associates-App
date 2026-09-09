@@ -385,7 +385,7 @@ export default function EmployeeProjectDetailScreen(): React.ReactElement {
                           setViewerVisible(true);
                         }}
                       >
-                        {upload.resourceType === 'image' ? (
+                        {upload.resourceType === 'IMAGE' ? (
                           <Image
                             source={{ uri: upload.url }}
                             style={styles.photoImage}
