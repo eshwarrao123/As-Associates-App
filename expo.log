@@ -1,0 +1,5 @@
+env: load .env
+env: export EXPO_PUBLIC_API_URL
+Starting project at C:\dev\as-associates-app
+Starting Metro Bundler
+

@@ -11,7 +11,6 @@ import {
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../../../../src/components/ui/Button';
-import { Dropdown } from '../../../../src/components/ui/Dropdown';
 import { Input } from '../../../../src/components/ui/Input';
 import { Icon } from '../../../../src/components/ui/Icon';
 import { AdminBottomNav } from '../../../../src/components/ui/AdminBottomNav';
@@ -25,8 +24,6 @@ import {
 import { useEmployee, useUpdateEmployee } from '../../../../src/hooks/useEmployees';
 import { getErrorMessage } from '../../../../src/services/api/errorHandler';
 
-const DEPARTMENTS = ['Civil', 'Electrical', 'Plumbing', 'HVAC', 'General'];
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function EditEmployeeScreen(): React.ReactElement {
@@ -37,26 +34,31 @@ export default function EditEmployeeScreen(): React.ReactElement {
   const { data: employee, isLoading } = useEmployee(id ?? '');
   const updateEmployee = useUpdateEmployee();
 
-  const [fullName, setFullName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [designation, setDesignation] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
-  const [department, setDepartment] = useState<string | null>(null);
 
   // Prefill form when employee data loads
   React.useEffect(() => {
     if (employee) {
-      setFullName(`${employee.firstName} ${employee.lastName}`);
+      setFirstName(employee.firstName ?? '');
+      setLastName(employee.lastName ?? '');
       setDesignation(employee.designation ?? '');
       setPhone(employee.phone ?? '');
       setEmail(employee.email ?? '');
-      setDepartment(employee.department ?? null);
     }
   }, [employee]);
 
   const handleSubmit = () => {
-    if (!fullName.trim()) {
-      Alert.alert('Error', 'Please enter full name');
+    if (!firstName.trim()) {
+      Alert.alert('Error', 'Please enter first name');
+      return;
+    }
+
+    if (!lastName.trim()) {
+      Alert.alert('Error', 'Please enter last name');
       return;
     }
 
@@ -65,11 +67,17 @@ export default function EditEmployeeScreen(): React.ReactElement {
       return;
     }
 
+    if (email.trim() && !email.includes('@')) {
+      Alert.alert('Error', 'Please enter a valid email address');
+      return;
+    }
+
     updateEmployee.mutate(
       {
         id: id ?? '',
         data: {
-          name: fullName.trim(),
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
           phone: phone.trim(),
           email: email.trim() || undefined,
           designation: designation.trim() || undefined,
@@ -155,20 +163,30 @@ export default function EditEmployeeScreen(): React.ReactElement {
           <Text style={styles.sectionLabel}>PERSONAL INFO</Text>
 
           <Input
-            label="Full Name *"
-            value={fullName}
-            onChangeText={setFullName}
-            placeholder="Enter full name"
+            label="First Name *"
+            value={firstName}
+            onChangeText={setFirstName}
+            placeholder="Enter first name"
             autoCapitalize="words"
             containerStyle={styles.field}
             editable={!updateEmployee.isPending}
           />
           <Input
-            label="Role / Designation"
-            value={designation}
-            onChangeText={setDesignation}
-            placeholder="e.g. Site Engineer"
+            label="Last Name *"
+            value={lastName}
+            onChangeText={setLastName}
+            placeholder="Enter last name"
             autoCapitalize="words"
+            containerStyle={styles.field}
+            editable={!updateEmployee.isPending}
+          />
+          <Input
+            label="Email"
+            value={email}
+            onChangeText={setEmail}
+            placeholder="Enter email address"
+            keyboardType="email-address"
+            autoCapitalize="none"
             containerStyle={styles.field}
             editable={!updateEmployee.isPending}
           />
@@ -182,11 +200,11 @@ export default function EditEmployeeScreen(): React.ReactElement {
             editable={!updateEmployee.isPending}
           />
           <Input
-            label="Email (Optional)"
-            value={email}
-            onChangeText={setEmail}
-            placeholder="Enter email address"
-            keyboardType="email-address"
+            label="Role / Designation"
+            value={designation}
+            onChangeText={setDesignation}
+            placeholder="e.g. Site Engineer"
+            autoCapitalize="words"
             containerStyle={styles.field}
             editable={!updateEmployee.isPending}
           />

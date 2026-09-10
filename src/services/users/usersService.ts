@@ -157,6 +157,7 @@ export async function updateEmployee(id: string, data: {
   firstName?: string;
   lastName?: string;
   phone?: string;
+  email?: string;
   designation?: string;
 }) {
   const response = await apiClient.patch<any>(`/users/${id}`, data);
