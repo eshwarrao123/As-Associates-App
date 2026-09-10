@@ -9,6 +9,6 @@ import { CloudinaryProvider } from './cloudinary.provider';
   imports: [ConfigModule],
   controllers: [UploadsController],
   providers: [UploadsService, PrismaService, CloudinaryProvider],
-  exports: [UploadsService],
+  exports: [UploadsService, CloudinaryProvider],
 })
 export class UploadsModule {}

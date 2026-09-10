@@ -1,206 +1,173 @@
 import apiClient from '../api/client';
-import type { PaginatedResponse } from '../api/types';
 
 // ─── Response Types ───────────────────────────────────────────────────────────
 
-interface GetMeResponse {
+export interface MeResponse {
   id: string;
   email: string;
-  role: 'ADMIN' | 'EMPLOYEE';
-  status: 'PENDING' | 'ACTIVE' | 'DEACTIVATED';
   firstName: string;
   lastName: string;
+  role: string;
+  status: string;
+  employeeCode: string;
   phone?: string;
-  employeeCode?: string;
   designation?: string;
-  department?: string;
-  profilePhoto?: string | null;
-  _count?: {
-    assignments: number;
-    attendanceLogs: number;
-    progressLogs: number;
-    uploads: number;
-  };
-}
-
-interface UserResponse {
-  id: string;
-  email: string;
-  role: 'ADMIN' | 'EMPLOYEE';
-  status: 'PENDING' | 'ACTIVE' | 'DEACTIVATED';
-  firstName: string;
-  lastName: string;
-  phone?: string;
-  employeeCode?: string;
-  designation?: string;
-  department?: string;
-  profilePhoto?: string | null;
+  photoUrl?: string;
+  mustChangePassword: boolean;
   createdAt: string;
-  updatedAt: string;
   _count?: {
-    assignments: number;
-    attendanceLogs: number;
+    assignments?: number;
+    attendanceLogs?: number;
+    progressLogs?: number;
+    uploads?: number;
   };
 }
 
-interface UserDetailResponse extends UserResponse {
-  assignments?: {
-    project: {
-      id: string;
-      name: string;
-      status: 'ONGOING' | 'COMPLETED' | 'ON_HOLD' | 'UPCOMING';
-    };
-  }[];
+export interface UserResponse {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  status: string;
+  employeeCode: string;
+  phone?: string;
+  designation?: string;
+  photoUrl?: string;
+  createdAt: string;
   _count?: {
-    assignments: number;
-    attendanceLogs: number;
-    progressLogs: number;
-    uploads: number;
+    assignments?: number;
+    attendanceLogs?: number;
   };
 }
 
-// ─── User Service Functions ───────────────────────────────────────────────────
+// ─── Users Service Functions ──────────────────────────────────────────────────
 
 /**
- * Fetches the current authenticated user's full profile.
- * @returns The authenticated user's data
+ * Fetches the current authenticated user's profile.
+ * @returns User profile
  */
-export async function getMe(): Promise<GetMeResponse> {
-  const response = await apiClient.get<GetMeResponse>('/users/me');
+export async function getMe(): Promise<MeResponse> {
+  const response = await apiClient.get<MeResponse>('/users/me');
   return response.data;
 }
 
 /**
- * Fetches all users with pagination.
- * @param page - Page number (default: 1)
- * @param limit - Items per page (default: 10)
- * @param status - Filter by user status (optional)
- * @returns Paginated list of users
+ * Updates the current user's profile.
+ * @param data - Profile update data
+ * @returns Updated profile
+ */
+export async function updateMe(data: {
+  phone?: string;
+  photoUrl?: string;
+}): Promise<MeResponse> {
+  const response = await apiClient.put<MeResponse>('/users/me', data);
+  return response.data;
+}
+
+/**
+ * Uploads a profile photo for the current user.
+ * @param file - File data with uri, name, type
+ * @returns Updated user with new photoUrl
+ */
+export async function uploadProfilePhoto(file: {
+  uri: string;
+  name: string;
+  type: string;
+}): Promise<MeResponse> {
+  const formData = new FormData();
+
+  // Append file to FormData
+  formData.append('file', {
+    uri: file.uri,
+    name: file.name,
+    type: file.type,
+  } as any);
+
+  const response = await apiClient.post<MeResponse>(
+    '/users/me/profile-photo',
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    },
+  );
+
+  return response.data;
+}
+
+// ─── Admin Users Service Functions ────────────────────────────────────────────
+
+/**
+ * Fetches users list (admin only).
  */
 export async function getUsers(
   page: number = 1,
-  limit: number = 10,
-  status?: 'PENDING' | 'ACTIVE' | 'DEACTIVATED',
+  limit: number = 20,
+  status?: string,
+  search?: string,
 ) {
-  const params = new URLSearchParams({
-    page: String(page),
-    limit: String(limit),
-  });
+  const params = new URLSearchParams();
+  params.append('page', String(page));
+  params.append('limit', String(limit));
   if (status) params.append('status', status);
+  if (search) params.append('search', search);
 
-  const response = await apiClient.get<PaginatedResponse<UserResponse>>(
+  const response = await apiClient.get<{ data: UserResponse[]; meta: any }>(
     `/users?${params.toString()}`,
   );
   return response.data;
 }
 
 /**
- * Fetches a single user by ID with extended admin details.
- * @param id - User ID
- * @returns User detail with counts and admin-specific fields
+ * Fetches a single user by ID (admin only).
  */
-export async function getUserById(id: string): Promise<UserDetailResponse> {
-  const response = await apiClient.get<UserDetailResponse>(`/users/${id}`);
+export async function getUserById(id: string) {
+  const response = await apiClient.get<any>(`/users/${id}`);
   return response.data;
 }
 
 /**
- * Creates a new employee.
- * @param data - Employee creation data
- * @returns Created employee
+ * Fetches employee's assigned projects (admin only).
+ */
+export async function getEmployeeProjects(userId: string) {
+  const response = await apiClient.get<any>(`/users/${userId}/projects`);
+  return response.data;
+}
+
+/**
+ * Creates a new employee (admin only).
  */
 export async function createEmployee(data: {
   firstName: string;
   lastName: string;
   email: string;
   phone?: string;
-  role?: 'EMPLOYEE' | 'ADMIN';
   designation?: string;
-  department?: string;
-  employeeCode?: string;
-}): Promise<UserResponse> {
-  const response = await apiClient.post<UserResponse>('/users', data);
+}) {
+  const response = await apiClient.post<any>('/users', data);
   return response.data;
 }
 
 /**
- * Updates an employee's information.
- * @param id - User ID
- * @param data - Update data
- * @returns Updated user
+ * Updates an employee (admin only).
  */
-export async function updateEmployee(
-  id: string,
-  data: {
-    name?: string;
-    phone?: string;
-    email?: string;
-    designation?: string;
-  },
-) {
-  // Split name into firstName and lastName (DTO whitelist requires separate fields)
-  const [firstName, ...lastNameParts] = (data.name || '').trim().split(/\s+/);
-  const lastName = lastNameParts.join(' ') || '';
-
-  const payload: {
-    firstName?: string;
-    lastName?: string;
-    phone?: string;
-    email?: string;
-    designation?: string;
-  } = {};
-
-  if (data.name) {
-    payload.firstName = firstName;
-    payload.lastName = lastName;
-  }
-  if (data.phone !== undefined) payload.phone = data.phone;
-  if (data.email !== undefined) payload.email = data.email;
-  if (data.designation !== undefined) payload.designation = data.designation;
-
-  const response = await apiClient.patch<UserResponse>(
-    `/users/${id}`,
-    payload,
-  );
+export async function updateEmployee(id: string, data: {
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  designation?: string;
+}) {
+  const response = await apiClient.patch<any>(`/users/${id}`, data);
   return response.data;
 }
 
 /**
- * Updates an employee's status.
- * @param id - User ID
- * @param status - New status
- * @returns Updated user with optional tempCredential (when activating from PENDING)
+ * Updates employee status (admin only).
  */
-export async function updateEmployeeStatus(
-  id: string,
-  status: 'ACTIVE' | 'DEACTIVATED',
-): Promise<UserResponse & { tempCredential?: string; message?: string }> {
-  const response = await apiClient.patch<
-    UserResponse & { tempCredential?: string; message?: string }
-  >(`/users/${id}/status`, { status });
+export async function updateEmployeeStatus(id: string, status: string) {
+  const response = await apiClient.patch<any>(`/users/${id}/status`, { status });
   return response.data;
 }
 
-/**
- * Fetches projects assigned to a specific employee.
- * @param id - User ID
- * @returns Array of projects
- */
-export async function getEmployeeProjects(id: string) {
-  const user = await getUserById(id);
-  return user.assignments?.map((a) => a.project) ?? [];
-}
-
-// ─── Project Response Type ────────────────────────────────────────────────────
-
-interface ProjectResponse {
-  id: string;
-  name: string;
-  clientName: string;
-  location: string;
-  description?: string;
-  startDate: string;
-  endDate?: string;
-  status: 'ONGOING' | 'COMPLETED' | 'ON_HOLD' | 'UPCOMING';
-  progressPercent: number;
-}

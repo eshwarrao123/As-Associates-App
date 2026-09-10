@@ -10,8 +10,9 @@ import { Button } from '../../src/components/ui/Button';
 import { Icon, type IconName } from '../../src/components/ui/Icon';
 import { BottomNav } from '../../src/components/ui/BottomNav';
 import { useAuthStore } from '../../src/store/auth.store';
-import { useMe } from '../../src/hooks/useMe';
+import { useMe, useUploadProfilePhoto } from '../../src/hooks/useMe';
 import { queryKeys } from '../../src/services/api/queryKeys';
+import { getErrorMessage } from '../../src/services/api/errorHandler';
 import { Colors, FontFamily, FontSize, Spacing, BorderRadius, withAlpha } from '../../src/constants/tokens';
 
 // Stats are now calculated from real API data (useMe, useAttendanceCalendar)
@@ -54,10 +55,10 @@ const LinkRow: React.FC<Row & { value?: string; onPress?: () => void }> = ({
 export default function ProfileScreen(): React.ReactElement {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const { data: meData, isLoading: meLoading } = useMe();
+  const uploadProfilePhoto = useUploadProfilePhoto();
   const storeUser = useAuthStore((state) => state.user);
 
   // Invalidate auth.me query if cached user doesn't match store user
@@ -105,16 +106,42 @@ export default function ProfileScreen(): React.ReactElement {
   ];
 
   const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') return;
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    if (!result.canceled && result.assets.length > 0) {
-      setPhotoUri(result.assets[0].uri);
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please allow access to your photo library to upload a profile picture.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets.length > 0) {
+        const asset = result.assets[0];
+
+        // Prepare file data for upload
+        const fileData = {
+          uri: asset.uri,
+          name: asset.fileName || `profile_${Date.now()}.jpg`,
+          type: asset.mimeType || 'image/jpeg',
+        };
+
+        // Upload to server
+        uploadProfilePhoto.mutate(fileData, {
+          onSuccess: () => {
+            Alert.alert('Success', 'Profile picture updated successfully!');
+          },
+          onError: (error) => {
+            Alert.alert('Error', getErrorMessage(error));
+          },
+        });
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to pick image. Please try again.');
     }
   };
 
@@ -154,9 +181,14 @@ export default function ProfileScreen(): React.ReactElement {
 
           {/* Navy header */}
           <View style={styles.header}>
-            <TouchableOpacity activeOpacity={0.8} onPress={pickImage} style={styles.avatarWrapper}>
-              {photoUri ? (
-                <Image source={{ uri: photoUri }} style={styles.avatarImage} />
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={pickImage}
+              style={styles.avatarWrapper}
+              disabled={uploadProfilePhoto.isPending}
+            >
+              {meData?.photoUrl ? (
+                <Image source={{ uri: meData.photoUrl }} style={styles.avatarImage} />
               ) : (
                 <Avatar
                   initials={initials}
@@ -167,7 +199,11 @@ export default function ProfileScreen(): React.ReactElement {
               )}
               {/* Camera badge */}
               <View style={styles.cameraBadge}>
-                <Icon name="camera" size={12} color={Colors.textOnPrimary} />
+                {uploadProfilePhoto.isPending ? (
+                  <ActivityIndicator size="small" color={Colors.textOnPrimary} />
+                ) : (
+                  <Icon name="camera" size="sm" color={Colors.textOnPrimary} />
+                )}
               </View>
             </TouchableOpacity>
             <View style={styles.headerNameRow}>

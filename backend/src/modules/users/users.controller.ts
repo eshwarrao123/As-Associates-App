@@ -8,7 +8,11 @@ import {
   Param,
   Query,
   ParseUUIDPipe,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -37,6 +41,20 @@ export class UsersController {
     @Body() dto: UpdateMeDto,
   ) {
     return this.usersService.updateMe(userId, dto);
+  }
+
+  @Post('me/profile-photo')
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+    }),
+  )
+  async uploadProfilePhoto(
+    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser('sub') userId: string,
+  ) {
+    return this.usersService.uploadProfilePhoto(file, userId);
   }
 
   // ─── Admin: Employee management ─────────────────────────────────────────────

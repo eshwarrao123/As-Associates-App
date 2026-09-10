@@ -3,6 +3,7 @@ import {
   ConflictException,
   NotFoundException,
   BadRequestException,
+  Inject,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -16,7 +17,10 @@ import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @Inject('CLOUDINARY') private cloudinaryConfig: any,
+  ) {}
 
   // ─── Employee code generator ───────────────────────────────────────────────
   private async generateEmployeeCode(): Promise<string> {
@@ -352,6 +356,86 @@ export class UsersService {
         photoUrl: true,
       },
     });
+    return updated;
+  }
+
+  // ─── Employee: Upload profile photo ─────────────────────────────────────────
+  async uploadProfilePhoto(file: Express.Multer.File, userId: string) {
+    if (!file) {
+      throw new BadRequestException('No file provided');
+    }
+
+    // Validate file type
+    const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+      throw new BadRequestException(
+        'Invalid file type. Allowed: JPEG, PNG, WebP',
+      );
+    }
+
+    // Validate file size (5MB limit for profile photos)
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      throw new BadRequestException('File size exceeds 5MB limit');
+    }
+
+    // Configure Cloudinary
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { v2: cloudinaryV2 } = require('cloudinary');
+    cloudinaryV2.config(this.cloudinaryConfig);
+
+    // Upload to Cloudinary in a dedicated profile folder
+    const result: any = await new Promise((resolve, reject) => {
+      const stream = cloudinaryV2.uploader.upload_stream(
+        {
+          folder: `as-associates/profiles`,
+          resource_type: 'image',
+          transformation: [
+            { width: 400, height: 400, crop: 'fill', gravity: 'face' },
+          ],
+        },
+        (error: any, res: any) => {
+          if (error) reject(error);
+          else resolve(res);
+        },
+      );
+      stream.end(file.buffer);
+    });
+
+    // Get user's old photo URL to potentially delete
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { photoUrl: true },
+    });
+
+    // Update user's photoUrl in database
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: { photoUrl: result.secure_url },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        photoUrl: true,
+      },
+    });
+
+    // Optionally delete old photo from Cloudinary
+    if (user?.photoUrl && user.photoUrl.includes('cloudinary.com')) {
+      try {
+        const urlParts = user.photoUrl.split('/');
+        const uploadIndex = urlParts.indexOf('upload');
+        if (uploadIndex !== -1 && uploadIndex < urlParts.length - 1) {
+          const pathAfterUpload = urlParts.slice(uploadIndex + 2).join('/');
+          const publicIdWithExt = pathAfterUpload.split('.')[0];
+          await cloudinaryV2.uploader.destroy(publicIdWithExt);
+        }
+      } catch {
+        // Log but don't fail — DB record is already updated
+      }
+    }
+
     return updated;
   }
 
