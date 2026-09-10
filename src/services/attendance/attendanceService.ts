@@ -99,19 +99,21 @@ export async function getMyAttendanceCalendar(
 
 /**
  * Admin endpoint: Fetches attendance records for all employees.
- * @param params - Optional filters (userId, date)
+ * @param params - Optional filters (userId, startDate, endDate)
  * @returns Array of attendance records with user info
  */
 export async function getAdminAttendance(params?: {
   userId?: string;
-  date?: string;
+  startDate?: string;
+  endDate?: string;
 }) {
-  const queryParams: Record<string, string> = {};
+  const queryParams: Record<string, string> = { limit: '100' };
   if (params?.userId) queryParams.userId = params.userId;
-  if (params?.date) queryParams.date = params.date;
+  if (params?.startDate) queryParams.startDate = params.startDate;
+  if (params?.endDate) queryParams.endDate = params.endDate;
 
   const response = await apiClient.get<{ data: AdminAttendanceRecord[] }>(
-    '/attendance/admin',
+    '/attendance',
     { params: queryParams },
   );
   return response.data.data;

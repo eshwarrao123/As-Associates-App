@@ -11,3 +11,24 @@ An update for expo is available: 57.0.10 → ~57.0.21
 Logs for your project will appear below.
 Android Bundled 7326ms index.ts (2196 modules)
 Android Bundled 428ms src\services\api\tokenStore.ts (612 modules)
+C:\dev\as-associates-app\node_modules\expo\node_modules\@expo\cli\build\src\utils\errors.js:130
+    throw error;
+    ^
+
+Error: ENOENT: no such file or directory, watch 'C:\dev\as-associates-app\node_modules\.expo-file-system-7e5PTXpI\android\src\main\java\expo\modules\filesystem'
+    at FSWatcher.<computed> (node:internal/fs/watchers:321:19)
+    at Object.watch (node:fs:2548:36)
+    at #watchdir (C:\dev\as-associates-app\node_modules\@expo\metro-file-map\build\watchers\FallbackWatcher.js:164:38)
+    at C:\dev\as-associates-app\node_modules\@expo\metro-file-map\build\watchers\FallbackWatcher.js:268:39
+    at Walker.<anonymous> (C:\dev\as-associates-app\node_modules\@expo\metro-file-map\build\watchers\FallbackWatcher.js:410:33)
+    at Walker.emit (node:events:509:28)
+    at C:\dev\as-associates-app\node_modules\walker\lib\walker.js:69:16
+    at FSReqCallback.oncomplete (node:fs:185:23) {
+  errno: -4058,
+  syscall: 'watch',
+  code: 'ENOENT',
+  path: 'C:\\dev\\as-associates-app\\node_modules\\.expo-file-system-7e5PTXpI\\android\\src\\main\\java\\expo\\modules\\filesystem',
+  filename: 'C:\\dev\\as-associates-app\\node_modules\\.expo-file-system-7e5PTXpI\\android\\src\\main\\java\\expo\\modules\\filesystem'
+}
+
+Node.js v24.18.0
