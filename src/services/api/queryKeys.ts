@@ -32,6 +32,7 @@ export const queryKeys = {
   },
   requests: {
     my: ['requests', 'my'] as const,
+    myProject: (projectId: string) => ['requests', 'my', 'project', projectId] as const,
     admin: (status?: string) => ['requests', 'admin', status ?? 'all'] as const,
     detail: (id: string) => ['requests', 'detail', id] as const,
   },

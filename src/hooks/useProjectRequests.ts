@@ -10,7 +10,7 @@ import type { RequestResponse } from '../services/requests/requestsService';
  */
 export function useProjectRequests(projectId: string) {
   return useQuery({
-    queryKey: [...queryKeys.requests.my, projectId],
+    queryKey: queryKeys.requests.myProject(projectId),
     queryFn: async () => {
       const response = await apiClient.get<{ data: RequestResponse[]; meta: unknown }>(
         `/requests/my?projectId=${projectId}`,
