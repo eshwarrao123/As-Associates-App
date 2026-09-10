@@ -3,3 +3,11 @@ env: export EXPO_PUBLIC_API_URL
 Starting project at C:\dev\as-associates-app
 Starting Metro Bundler
 
+› Opening exp://192.168.31.243:8081 on Pixel_5
+Waiting on http://localhost:8081
+
+An update for expo is available: 57.0.10 → ~57.0.21
+8 other packages may need updating. Run npx expo install --check for details.
+Logs for your project will appear below.
+Android Bundled 7326ms index.ts (2196 modules)
+Android Bundled 428ms src\services\api\tokenStore.ts (612 modules)

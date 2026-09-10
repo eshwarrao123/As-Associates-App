@@ -99,7 +99,7 @@ export default function EmployeeProjectsScreen(): React.ReactElement {
                 {projects.length} project{projects.length !== 1 ? 's' : ''} assigned
               </Text>
 
-              {projects.map((p) => (
+              {projects.map((p: { id: string; name: string; status: string }) => (
                 <Card key={p.id} style={styles.projectCard}>
                   <View style={styles.cardTop}>
                     <Text style={styles.projectName} numberOfLines={1}>{p.name}</Text>

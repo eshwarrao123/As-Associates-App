@@ -130,10 +130,13 @@ export async function getUserById(id: string) {
 
 /**
  * Fetches employee's assigned projects (admin only).
+ * Uses the existing /users/:id endpoint which includes assignments.
  */
 export async function getEmployeeProjects(userId: string) {
-  const response = await apiClient.get<any>(`/users/${userId}/projects`);
-  return response.data;
+  const response = await apiClient.get<any>(`/users/${userId}`);
+  // Extract projects from assignments
+  const projects = response.data?.assignments?.map((assignment: any) => assignment.project) || [];
+  return projects;
 }
 
 /**
