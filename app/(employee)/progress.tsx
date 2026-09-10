@@ -12,6 +12,7 @@ import {
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../src/store/auth.store';
+import { useMe } from '../../src/hooks/useMe';
 import { Avatar } from '../../src/components/ui/Avatar';
 import { Card } from '../../src/components/ui/Card';
 import { Dropdown } from '../../src/components/ui/Dropdown';
@@ -46,10 +47,19 @@ const WORK_STAGES = [
 export default function ProgressScreen(): React.ReactElement {
   const router = useRouter();
   const { user } = useAuthStore();
+  const { data: meData } = useMe();
 
   // Fetch projects from API
   const { data: projects, isLoading: isLoadingProjects } = useMyProjects();
   const createProgressLog = useCreateProgressLog();
+
+  // Derive display values from API data with fallback to store user
+  const displayFirstName = meData?.firstName ?? '';
+  const displayLastName = meData?.lastName ?? '';
+  const displayInitials = displayFirstName && displayLastName
+    ? `${displayFirstName[0]}${displayLastName[0]}`.toUpperCase()
+    : user?.avatarInitials ?? 'U';
+  const displayPhotoUrl = meData?.photoUrl ?? null;
 
   // Form state
   const [projectId, setProjectId] = useState<string | null>(null);
@@ -132,7 +142,7 @@ export default function ProgressScreen(): React.ReactElement {
             <Icon name="back" size="lg" color={Colors.primary} />
           </TouchableOpacity>
           <Text style={styles.appBarTitle}>Daily Progress</Text>
-          <Avatar initials={user?.avatarInitials ?? 'U'} size="sm" />
+          <Avatar initials={displayInitials} size="sm" photoUrl={displayPhotoUrl} />
         </View>
 
         <ScrollView

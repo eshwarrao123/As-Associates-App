@@ -134,7 +134,7 @@ export default function SettingsScreen(): React.ReactElement {
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           {/* Admin profile card */}
           <Card style={styles.profileCard}>
-            <Avatar initials={initials} size="lg" bgColor={Colors.primary} />
+            <Avatar initials={initials} size="lg" bgColor={Colors.primary} photoUrl={apiUser?.photoUrl ?? null} />
             <View style={styles.flex1}>
               <View style={styles.nameRow}>
                 <Text style={styles.companyName}>{displayName}</Text>
