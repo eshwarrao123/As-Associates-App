@@ -130,7 +130,7 @@ export default function ProfileScreen(): React.ReactElement {
           type: asset.mimeType || 'image/jpeg',
         };
 
-        // Upload to server
+        // Upload immediately after native crop confirmation
         uploadProfilePhoto.mutate(fileData, {
           onSuccess: () => {
             Alert.alert('Success', 'Profile picture updated successfully!');
