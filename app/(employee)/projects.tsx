@@ -13,6 +13,7 @@ import {
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../src/store/auth.store';
+import { useMe } from '../../src/hooks/useMe';
 import { useMyProjects } from '../../src/hooks/useMyProjects';
 import { ProjectCard } from '../../src/components/employee/ProjectCard';
 import { Avatar } from '../../src/components/ui/Avatar';
@@ -77,9 +78,16 @@ const EmptyState: React.FC<{ filter: FilterOption; query: string; isError?: bool
 export default function MyProjectsScreen(): React.ReactElement {
   const router = useRouter();
   const { user } = useAuthStore();
+  const { data: meData } = useMe();
   const { data: projects, isLoading, isError, refetch } = useMyProjects();
   const [activeFilter, setActiveFilter] = useState<FilterOption>('all');
   const [query, setQuery] = useState('');
+
+  // Get display data with preference for API data
+  const displayInitials = meData
+    ? `${meData.firstName[0]}${meData.lastName[0]}`.toUpperCase()
+    : user?.avatarInitials ?? 'U';
+  const displayPhotoUrl = meData?.photoUrl ?? null;
 
   const filteredProjects = useMemo(() => {
     if (!projects) return [];
@@ -128,8 +136,9 @@ export default function MyProjectsScreen(): React.ReactElement {
               resizeMode="contain"
             />
             <Avatar
-              initials={user?.avatarInitials ?? 'U'}
+              initials={displayInitials}
               size="sm"
+              photoUrl={displayPhotoUrl}
               style={styles.appBarAvatar}
             />
           </View>
@@ -160,8 +169,9 @@ export default function MyProjectsScreen(): React.ReactElement {
             resizeMode="contain"
           />
           <Avatar
-            initials={user?.avatarInitials ?? 'U'}
+            initials={displayInitials}
             size="sm"
+            photoUrl={displayPhotoUrl}
             style={styles.appBarAvatar}
           />
         </View>

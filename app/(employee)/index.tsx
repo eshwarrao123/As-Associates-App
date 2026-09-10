@@ -219,6 +219,8 @@ export default function EmployeeHomeScreen(): React.ReactElement {
     ? `${meData.firstName[0]}${meData.lastName[0]}`.toUpperCase()
     : storeUser?.avatarInitials ?? 'U';
 
+  const displayPhotoUrl = meData?.photoUrl ?? null;
+
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
@@ -244,6 +246,7 @@ export default function EmployeeHomeScreen(): React.ReactElement {
             <Avatar
               initials={displayInitials}
               size="sm"
+              photoUrl={displayPhotoUrl}
             />
           </View>
 

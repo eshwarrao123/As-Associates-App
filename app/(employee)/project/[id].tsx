@@ -94,6 +94,7 @@ interface TeamMember {
   id: string;
   initials: string;
   name: string;
+  photoUrl?: string | null;
 }
 
 const TEAM_OVERFLOW = 2;
@@ -122,6 +123,7 @@ export default function EmployeeProjectDetailScreen(): React.ReactElement {
       id: member.id,
       initials: `${member.firstName[0]}${member.lastName[0]}`.toUpperCase(),
       name: `${member.firstName} ${member.lastName}`,
+      photoUrl: member.photoUrl ?? null,
     })) ?? [];
 
   const teamOverflowCount = Math.max(0, (project?.team?.length ?? 0) - 3);
@@ -322,6 +324,7 @@ export default function EmployeeProjectDetailScreen(): React.ReactElement {
                         key={member.id}
                         initials={member.initials}
                         size="sm"
+                        photoUrl={member.photoUrl ?? null}
                         style={
                           index === 0
                             ? styles.avatarFirst

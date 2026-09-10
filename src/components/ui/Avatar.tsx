@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { Image, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { Colors, FontFamily, FontSize } from '../../constants/tokens';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -11,6 +11,7 @@ interface AvatarProps {
   size?: AvatarSize;
   style?: ViewStyle;
   bgColor?: string;
+  photoUrl?: string | null;
 }
 
 // ─── Size map ─────────────────────────────────────────────────────────────────
@@ -28,22 +29,37 @@ export const Avatar: React.FC<AvatarProps> = ({
   size = 'md',
   style,
   bgColor = Colors.primary,
+  photoUrl,
 }) => {
   const { container, fontSize } = SIZE_MAP[size];
 
+  const containerStyle = [
+    styles.base,
+    {
+      width: container,
+      height: container,
+      borderRadius: container / 2,
+      backgroundColor: photoUrl ? Colors.border : bgColor,
+    },
+    style,
+  ];
+
+  // If photoUrl exists and is valid, render image
+  if (photoUrl && photoUrl.trim() !== '') {
+    return (
+      <View style={containerStyle}>
+        <Image
+          source={{ uri: photoUrl }}
+          style={styles.image}
+          resizeMode="cover"
+        />
+      </View>
+    );
+  }
+
+  // Fallback to initials
   return (
-    <View
-      style={[
-        styles.base,
-        {
-          width: container,
-          height: container,
-          borderRadius: container / 2,
-          backgroundColor: bgColor,
-        },
-        style,
-      ]}
-    >
+    <View style={containerStyle}>
       <Text style={[styles.initials, { fontSize }]}>
         {initials.slice(0, 2).toUpperCase()}
       </Text>
@@ -57,6 +73,11 @@ const styles = StyleSheet.create({
   base: {
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  image: {
+    width: '100%',
+    height: '100%',
   },
   initials: {
     fontFamily: FontFamily.bold,

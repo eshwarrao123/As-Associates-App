@@ -68,6 +68,7 @@ export default function EmployeesScreen(): React.ReactElement {
     active: user.status === 'ACTIVE',
     projects: user._count?.assignments ?? 0,
     attendance: user._count?.attendanceLogs ?? 0,
+    photoUrl: user.photoUrl ?? null,
   })) ?? [];
 
   // Client-side filtering
@@ -140,7 +141,7 @@ export default function EmployeesScreen(): React.ReactElement {
             <TouchableOpacity activeOpacity={0.9} onPress={() => router.push(`/(admin)/employees/${item.id}` as never)}>
             <Card style={styles.empCard}>
               <View style={styles.empTop}>
-                <Avatar initials={item.initials} size="md" />
+                <Avatar initials={item.initials} size="md" photoUrl={item.photoUrl} />
                 <View style={styles.flex1}>
                   <View style={styles.empNameRow}>
                     <Text style={styles.empName} numberOfLines={1}>{item.name}</Text>

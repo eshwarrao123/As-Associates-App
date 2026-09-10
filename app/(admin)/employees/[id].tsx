@@ -177,7 +177,7 @@ export default function EmployeeDetailScreen(): React.ReactElement {
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           {/* ── Section 1: Profile header ──────────────────────────────── */}
           <Card style={styles.profileCard}>
-            <Avatar initials={initials} size="lg" bgColor={Colors.primary} />
+            <Avatar initials={initials} size="lg" bgColor={Colors.primary} photoUrl={employee.photoUrl ?? null} />
             <View style={styles.profileMeta}>
               <Text style={styles.empName}>{fullName}</Text>
               <Text style={styles.empDesignation}>{employee.designation ?? 'No designation'}</Text>

@@ -52,13 +52,19 @@ const STATUS_BADGE: Record<ProjectStatus, { variant: BadgeVariant; label: string
 
 // ─── Avatar stack ─────────────────────────────────────────────────────────────
 
-const AvatarStack: React.FC<{ initials: string[] }> = ({ initials }) => (
+interface TeamMember {
+  initials: string;
+  photoUrl?: string | null;
+}
+
+const AvatarStack: React.FC<{ members: TeamMember[] }> = ({ members }) => (
   <View style={styles.avatarStack}>
-    {initials.map((ini, i) => (
+    {members.map((member, i) => (
       <Avatar
         key={i}
-        initials={ini}
+        initials={member.initials}
         size="sm"
+        photoUrl={member.photoUrl}
         style={StyleSheet.flatten([styles.stackAvatar, i > 0 && styles.stackOverlap])}
       />
     ))}
@@ -90,9 +96,10 @@ export default function AdminProjectsScreen(): React.ReactElement {
     city: proj.location,
     status: mapApiStatusToFilter(proj.status),
     progress: proj.progressPercent ?? 0,
-    engineers: proj.assignments?.map((a) =>
-      `${a.user.firstName[0]}${a.user.lastName[0]}`.toUpperCase()
-    ) ?? [],
+    engineers: proj.assignments?.map((a) => ({
+      initials: `${a.user.firstName[0]}${a.user.lastName[0]}`.toUpperCase(),
+      photoUrl: a.user.photoUrl ?? null,
+    })) ?? [],
   })) ?? [];
 
   // Client-side filtering
@@ -172,7 +179,7 @@ export default function AdminProjectsScreen(): React.ReactElement {
               </View>
               <View style={styles.cardRow4}>
                 {item.engineers.length > 0 ? (
-                  <AvatarStack initials={item.engineers} />
+                  <AvatarStack members={item.engineers} />
                 ) : (
                   <Text style={styles.noTeam}>No team assigned</Text>
                 )}

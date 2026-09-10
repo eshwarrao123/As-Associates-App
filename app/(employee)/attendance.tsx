@@ -3,6 +3,7 @@ import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, Touchabl
 import { Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../src/store/auth.store';
+import { useMe } from '../../src/hooks/useMe';
 import { useAttendanceCalendar, useCheckIn } from '../../src/hooks/useAttendance';
 import { useMyProjects } from '../../src/hooks/useMyProjects';
 import { getErrorMessage } from '../../src/services/api/errorHandler';
@@ -71,6 +72,7 @@ function isWeekend(cellIndex: number): boolean {
 
 export default function AttendanceScreen(): React.ReactElement {
   const { user } = useAuthStore();
+  const { data: meData } = useMe();
   const now = new Date();
   const [currentMonth, setCurrentMonth] = useState(now.getMonth() + 1); // 1-12
   const [currentYear, setCurrentYear] = useState(now.getFullYear());
@@ -78,6 +80,12 @@ export default function AttendanceScreen(): React.ReactElement {
   const { data: attendanceData, isLoading } = useAttendanceCalendar(currentMonth, currentYear);
   const { data: projects } = useMyProjects();
   const checkInMutation = useCheckIn();
+
+  // Get display data with preference for API data
+  const displayInitials = meData
+    ? `${meData.firstName[0]}${meData.lastName[0]}`.toUpperCase()
+    : user?.avatarInitials ?? 'U';
+  const displayPhotoUrl = meData?.photoUrl ?? null;
 
   // Build attendance map by date
   const attendanceMap = useMemo(() => {
@@ -227,7 +235,7 @@ export default function AttendanceScreen(): React.ReactElement {
             }}
             resizeMode="contain"
           />
-          <Avatar initials={user?.avatarInitials ?? 'U'} size="sm" />
+          <Avatar initials={displayInitials} size="sm" photoUrl={displayPhotoUrl} />
         </View>
 
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>

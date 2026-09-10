@@ -21,6 +21,7 @@ interface ProjectResponse {
       id: string;
       firstName: string;
       lastName: string;
+      photoUrl?: string | null;
     };
   }>;
 }
@@ -37,6 +38,7 @@ interface ProjectDetailResponse extends ProjectResponse {
       lastName: string;
       employeeCode?: string;
       designation?: string;
+      photoUrl?: string | null;
     };
   }>;
   recentProgressLogs?: unknown[];

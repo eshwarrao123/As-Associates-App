@@ -311,7 +311,7 @@ export default function ProjectDetailScreen(): React.ReactElement {
                       key={m.id}
                       style={[styles.teamRow, i < project.team!.length - 1 && styles.metaBorder]}
                     >
-                      <Avatar initials={initials} size="sm" />
+                      <Avatar initials={initials} size="sm" photoUrl={m.photoUrl ?? null} />
                       <View style={styles.flex1}>
                         <Text style={styles.teamName}>{`${m.firstName} ${m.lastName}`}</Text>
                       </View>
