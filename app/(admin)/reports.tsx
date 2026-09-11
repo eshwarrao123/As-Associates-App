@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { writeAsStringAsync, EncodingType, Paths, File } from 'expo-file-system';
+import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Button } from '../../src/components/ui/Button';
 import { Card } from '../../src/components/ui/Card';
@@ -19,6 +19,7 @@ import { AdminBottomNav } from '../../src/components/ui/AdminBottomNav';
 import { Icon } from '../../src/components/ui/Icon';
 import { useAdminAttendance, useAdminRequests } from '../../src/hooks/useAdminReports';
 import { useAllProjects } from '../../src/hooks/useAdminProjects';
+import { useEmployees } from '../../src/hooks/useEmployees';
 import {
   BorderRadius,
   Colors,
@@ -97,6 +98,11 @@ function calculateAttendanceRows(
     status: string;
     user?: { firstName: string; lastName: string };
   }>,
+  allEmployees?: Array<{
+    id: string;
+    firstName: string;
+    lastName: string;
+  }>,
 ): AttendanceRow[] {
   const userMap = new Map<
     string,
@@ -104,7 +110,7 @@ function calculateAttendanceRows(
   >();
 
   records.forEach((record) => {
-    if (!record.user) return;
+    if (!record.user || !record.userId) return;
 
     const userName = `${record.user.firstName} ${record.user.lastName}`;
     const existing = userMap.get(record.userId) || {
@@ -126,13 +132,28 @@ function calculateAttendanceRows(
     userMap.set(record.userId, existing);
   });
 
+  // Include all active employees, even those with zero attendance
+  if (allEmployees) {
+    allEmployees.forEach((employee) => {
+      if (!userMap.has(employee.id)) {
+        userMap.set(employee.id, {
+          userId: employee.id,
+          name: `${employee.firstName} ${employee.lastName}`,
+          present: 0,
+          halfDay: 0,
+          total: 0,
+        });
+      }
+    });
+  }
+
   return Array.from(userMap.values()).map((user) => ({
     userId: user.userId,
     name: user.name,
     present: user.present,
     halfDay: user.halfDay,
     total: user.total,
-    pct: user.total > 0 ? `${Math.round(((user.present + user.halfDay * 0.5) / user.total) * 100)}%` : '—',
+    pct: user.total > 0 ? `${Math.round(((user.present + user.halfDay * 0.5) / user.total) * 100)}%` : '0%',
   }));
 }
 
@@ -154,9 +175,7 @@ function buildCsvString(headers: string[], rows: string[][]): string {
 async function exportCsv(filename: string, csvContent: string) {
   try {
     const file = new File(Paths.cache, filename);
-    await writeAsStringAsync(file.uri, csvContent, {
-      encoding: EncodingType.UTF8,
-    });
+    file.write(csvContent);
 
     const canShare = await Sharing.isAvailableAsync();
     if (canShare) {
@@ -261,6 +280,13 @@ export default function ReportsScreen(): React.ReactElement {
     endDate: dateRange.endDate,
   });
 
+  // Fetch active employees for attendance report (to include zero-attendance employees)
+  const {
+    data: employeesData,
+    isLoading: employeesLoading,
+    refetch: refetchEmployees,
+  } = useEmployees(1, 'ACTIVE');
+
   // Requests data
   const {
     data: requestsData,
@@ -273,8 +299,20 @@ export default function ReportsScreen(): React.ReactElement {
 
   const attendanceRows = useMemo<AttendanceRow[]>(() => {
     if (!attendanceData) return [];
-    return calculateAttendanceRows(attendanceData);
-  }, [attendanceData]);
+
+    // Filter employees to only include those created before or on the report end date
+    const reportEndDate = new Date(dateRange.endDate);
+    const relevantEmployees = employeesData?.data.filter((emp) => {
+      const empCreatedDate = new Date(emp.createdAt);
+      return empCreatedDate <= reportEndDate;
+    }).map((emp) => ({
+      id: emp.id,
+      firstName: emp.firstName,
+      lastName: emp.lastName,
+    }));
+
+    return calculateAttendanceRows(attendanceData, relevantEmployees);
+  }, [attendanceData, employeesData, dateRange.endDate]);
 
   const projectRows = useMemo<ProjectRow[]>(() => {
     if (!projectsData?.data) return [];
@@ -316,7 +354,7 @@ export default function ReportsScreen(): React.ReactElement {
   // ── Loading / error state ─────────────────────────────────────────────────
 
   const isLoading =
-    (reportType === 'Attendance' && attendanceLoading) ||
+    (reportType === 'Attendance' && (attendanceLoading || employeesLoading)) ||
     (reportType === 'Projects' && projectsLoading) ||
     (reportType === 'Requests' && requestsLoading);
 
@@ -328,10 +366,13 @@ export default function ReportsScreen(): React.ReactElement {
 
   const handleGenerate = useCallback(() => {
     setGenerated(true);
-    if (reportType === 'Attendance') refetchAttendance();
+    if (reportType === 'Attendance') {
+      refetchAttendance();
+      refetchEmployees();
+    }
     if (reportType === 'Projects') refetchProjects();
     if (reportType === 'Requests') refetchRequests();
-  }, [reportType, refetchAttendance, refetchProjects, refetchRequests]);
+  }, [reportType, refetchAttendance, refetchEmployees, refetchProjects, refetchRequests]);
 
   // ── Export CSV handler ────────────────────────────────────────────────────
 

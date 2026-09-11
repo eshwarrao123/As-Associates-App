@@ -195,6 +195,7 @@ export class AttendanceService {
         orderBy: { date: 'desc' },
         select: {
           id: true,
+          userId: true,
           date: true,
           checkInTime: true,
           checkOutTime: true,
