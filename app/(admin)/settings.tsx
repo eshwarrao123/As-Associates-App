@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar } from '../../src/components/ui/Avatar';
 import { Button } from '../../src/components/ui/Button';
 import { Card } from '../../src/components/ui/Card';
-import { Input } from '../../src/components/ui/Input';
 import { AdminBottomNav } from '../../src/components/ui/AdminBottomNav';
 import { Icon, type IconName } from '../../src/components/ui/Icon';
 import { useAuthStore } from '../../src/store/auth.store';
@@ -42,35 +41,18 @@ const NavRow: React.FC<LinkRow> = ({ icon, label, onPress }) => (
   </TouchableOpacity>
 );
 
-const ToggleRow: React.FC<{
-  icon: IconName;
-  label: string;
-  value: boolean;
-  onValueChange: (v: boolean) => void;
-}> = ({ icon, label, value, onValueChange }) => (
-  <View style={styles.row}>
-    <Icon name={icon} size="md" color={Colors.textSecondary} style={styles.rowIcon} />
-    <Text style={styles.rowLabel}>{label}</Text>
-    <Switch
-      value={value}
-      onValueChange={onValueChange}
-      trackColor={{ false: Colors.border, true: Colors.primary }}
-      thumbColor={Colors.surface}
-    />
-  </View>
-);
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function SettingsScreen(): React.ReactElement {
   const router = useRouter();
-  const [pushEnabled, setPushEnabled] = useState(true);
-  const [emailEnabled, setEmailEnabled] = useState(false);
   const [showCompanyEdit, setShowCompanyEdit] = useState(false);
-  const [companyName, setCompanyName] = useState('AS Associates');
-  const [regNumber, setRegNumber] = useState('CRN-2023-98471');
-  const [address, setAddress] = useState('Unit 4, Andheri Industrial Estate, Mumbai 400053');
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  // Company profile - static display values (no backend persistence)
+  const companyName = 'AS Associates';
+  const regNumber = 'CRN-2023-98471';
+  const address = 'Unit 4, Andheri Industrial Estate, Mumbai 400053';
 
   const { data: meData, isLoading: meLoading } = useMe();
   const storeUser = useAuthStore((state) => state.user);
@@ -155,7 +137,7 @@ export default function SettingsScreen(): React.ReactElement {
           <Card noPadding style={styles.linkCard}>
             <Text style={styles.sectionLabel}>COMPANY MANAGEMENT</Text>
 
-            {/* Company Profile — toggles inline edit panel */}
+            {/* Company Profile — read-only display */}
             <NavRow
               icon="client"
               label="Company Profile"
@@ -163,31 +145,24 @@ export default function SettingsScreen(): React.ReactElement {
             />
             {showCompanyEdit && (
               <View style={styles.expandPanel}>
-                <Input
-                  label="Company Name"
-                  value={companyName}
-                  onChangeText={setCompanyName}
-                  containerStyle={styles.expandField}
-                />
-                <Input
-                  label="Registration Number"
-                  value={regNumber}
-                  onChangeText={setRegNumber}
-                  containerStyle={styles.expandField}
-                />
-                <Input
-                  label="Primary Address"
-                  value={address}
-                  onChangeText={setAddress}
-                  containerStyle={styles.expandField}
-                />
-                <Button
-                  label="Save"
-                  onPress={() => {
-                    setShowCompanyEdit(false);
-                  }}
-                  style={styles.expandSaveBtn}
-                />
+                <View style={styles.readOnlyField}>
+                  <Text style={styles.readOnlyLabel}>Company Name</Text>
+                  <Text style={styles.readOnlyValue}>{companyName}</Text>
+                </View>
+                <View style={styles.readOnlyField}>
+                  <Text style={styles.readOnlyLabel}>Registration Number</Text>
+                  <Text style={styles.readOnlyValue}>{regNumber}</Text>
+                </View>
+                <View style={styles.readOnlyField}>
+                  <Text style={styles.readOnlyLabel}>Primary Address</Text>
+                  <Text style={styles.readOnlyValue}>{address}</Text>
+                </View>
+                <View style={styles.readOnlyNote}>
+                  <Icon name="info" size="sm" color={Colors.textMuted} />
+                  <Text style={styles.readOnlyNoteText}>
+                    Company profile is managed by system administrator
+                  </Text>
+                </View>
               </View>
             )}
 
@@ -212,9 +187,17 @@ export default function SettingsScreen(): React.ReactElement {
           {/* Notifications */}
           <Card noPadding style={styles.linkCard}>
             <Text style={styles.sectionLabel}>NOTIFICATIONS</Text>
-            <ToggleRow icon="requests" label="Push Notifications" value={pushEnabled}  onValueChange={setPushEnabled}  />
+            <View style={styles.row}>
+              <Icon name="requests" size="md" color={Colors.textSecondary} style={styles.rowIcon} />
+              <Text style={styles.rowLabel}>Push Notifications</Text>
+              <Text style={styles.unavailableText}>Not configured</Text>
+            </View>
             <View style={styles.divider} />
-            <ToggleRow icon="email"  label="Email Alerts"        value={emailEnabled} onValueChange={setEmailEnabled} />
+            <View style={styles.row}>
+              <Icon name="email" size="md" color={Colors.textSecondary} style={styles.rowIcon} />
+              <Text style={styles.rowLabel}>Email Alerts</Text>
+              <Text style={styles.unavailableText}>Not configured</Text>
+            </View>
           </Card>
 
           {/* App info */}
@@ -326,12 +309,44 @@ const styles = StyleSheet.create({
   // Logout button — outline with danger border color
   logoutBtn: { borderColor: Colors.danger, marginTop: Spacing[2] },
 
-  // Company Profile inline expansion panel
+  // Company Profile inline expansion panel (read-only)
   expandPanel: {
     paddingHorizontal: Spacing[4],
     paddingBottom: Spacing[3],
     gap: Spacing[3],
   },
-  expandField: { marginBottom: 0 },
-  expandSaveBtn: { marginTop: Spacing[1] },
+  readOnlyField: {
+    gap: Spacing[1],
+  },
+  readOnlyLabel: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: LetterSpacing.wider,
+  },
+  readOnlyValue: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.md,
+    color: Colors.textPrimary,
+    lineHeight: 20,
+  },
+  readOnlyNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing[2],
+    paddingTop: Spacing[2],
+  },
+  readOnlyNoteText: {
+    flex: 1,
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
+    lineHeight: 18,
+  },
+  unavailableText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
+  },
 });

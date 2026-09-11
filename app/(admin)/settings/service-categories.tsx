@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { FlatList, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import React from 'react';
+import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon } from '../../../src/components/ui/Icon';
@@ -9,21 +9,23 @@ import {
   FontFamily,
   FontSize,
   Spacing,
-  BorderRadius,
+  LetterSpacing,
 } from '../../../src/constants/tokens';
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
+// ─── Static configuration ─────────────────────────────────────────────────────
 
-const DEFAULT_CATEGORIES = [
+// Service categories used in project creation (app/(admin)/projects/new.tsx)
+// These are domain-specific enums maintained as static configuration
+const SERVICE_CATEGORIES = [
   'Civil',
   'Electrical',
-  'Plumbing',
-  'HVAC',
   'Painting',
-  'Furniture',
-  'Flooring',
+  'HVAC',
+  'Plumbing',
   'False Ceiling',
+  'Furniture',
   'Signage',
+  'Flooring',
   'Fire Safety',
 ];
 
@@ -31,12 +33,6 @@ const DEFAULT_CATEGORIES = [
 
 export default function ServiceCategoriesScreen(): React.ReactElement {
   const router = useRouter();
-  const [enabled, setEnabled] = useState<Record<string, boolean>>(
-    Object.fromEntries(DEFAULT_CATEGORIES.map((c) => [c, true]))
-  );
-
-  const toggle = (cat: string) =>
-    setEnabled((prev) => ({ ...prev, [cat]: !prev[cat] }));
 
   return (
     <>
@@ -51,32 +47,25 @@ export default function ServiceCategoriesScreen(): React.ReactElement {
         </View>
 
         <FlatList
-          data={DEFAULT_CATEGORIES}
+          data={SERVICE_CATEGORIES}
           keyExtractor={(item) => item}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           ItemSeparatorComponent={() => <View style={styles.divider} />}
           renderItem={({ item }) => (
             <View style={styles.row}>
+              <Icon name="document" size="md" color={Colors.textSecondary} style={styles.rowIcon} />
               <Text style={styles.rowLabel}>{item}</Text>
-              <Switch
-                value={enabled[item] ?? true}
-                onValueChange={() => toggle(item)}
-                trackColor={{ false: Colors.border, true: Colors.primary }}
-                thumbColor={Colors.surface}
-              />
             </View>
           )}
           ListFooterComponent={
-            <TouchableOpacity
-              activeOpacity={0.85}
-              style={styles.addBtn}
-              onPress={() => {
-                // Placeholder: Add category UI not implemented yet
-              }}
-            >
-              <Text style={styles.addBtnText}>+ Add Category</Text>
-            </TouchableOpacity>
+            <View style={styles.footerNote}>
+              <Icon name="info" size="sm" color={Colors.textMuted} />
+              <Text style={styles.footerNoteText}>
+                Service categories are managed as part of the application configuration.
+                These categories are used when creating or editing projects.
+              </Text>
+            </View>
           }
         />
 
@@ -114,6 +103,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     paddingHorizontal: Spacing[4],
     paddingVertical: Spacing[3],
+    gap: Spacing[3],
+  },
+  rowIcon: {
+    width: 24,
   },
   rowLabel: {
     flex: 1,
@@ -127,17 +120,19 @@ const styles = StyleSheet.create({
     marginHorizontal: Spacing[4],
   },
 
-  addBtn: {
+  footerNote: {
+    flexDirection: 'row',
+    gap: Spacing[2],
     margin: Spacing[4],
-    height: 48,
-    borderRadius: BorderRadius.btn,
-    backgroundColor: Colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
+    padding: Spacing[3],
+    backgroundColor: Colors.surface,
+    borderRadius: 8,
   },
-  addBtnText: {
-    fontFamily: FontFamily.medium,
-    fontSize: FontSize.md,
-    color: Colors.textOnAccent,
+  footerNoteText: {
+    flex: 1,
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
+    lineHeight: 18,
   },
 });
