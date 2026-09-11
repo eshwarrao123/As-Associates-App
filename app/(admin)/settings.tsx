@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar } from '../../src/components/ui/Avatar';
 import { Button } from '../../src/components/ui/Button';
 import { Card } from '../../src/components/ui/Card';
+import { Input } from '../../src/components/ui/Input';
 import { AdminBottomNav } from '../../src/components/ui/AdminBottomNav';
 import { Icon, type IconName } from '../../src/components/ui/Icon';
 import { useAuthStore } from '../../src/store/auth.store';
 import { useMe } from '../../src/hooks/useMe';
+import { useCompanySettings, useUpdateCompanySettings } from '../../src/hooks/useCompanySettings';
+import { getErrorMessage } from '../../src/services/api/errorHandler';
 import {
   Colors,
   FontFamily,
@@ -47,14 +50,17 @@ const NavRow: React.FC<LinkRow> = ({ icon, label, onPress }) => (
 export default function SettingsScreen(): React.ReactElement {
   const router = useRouter();
   const [showCompanyEdit, setShowCompanyEdit] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  // Company profile - static display values (no backend persistence)
-  const companyName = 'AS Associates';
-  const regNumber = 'CRN-2023-98471';
-  const address = 'Unit 4, Andheri Industrial Estate, Mumbai 400053';
+  // Editable company fields
+  const [editCompanyName, setEditCompanyName] = useState('');
+  const [editRegNumber, setEditRegNumber] = useState('');
+  const [editAddress, setEditAddress] = useState('');
 
   const { data: meData, isLoading: meLoading } = useMe();
+  const { data: companySettings, isLoading: isLoadingCompany } = useCompanySettings();
+  const updateCompanySettings = useUpdateCompanySettings();
   const storeUser = useAuthStore((state) => state.user);
 
   // Use API data if available, fallback to store user
@@ -104,6 +110,56 @@ export default function SettingsScreen(): React.ReactElement {
     router.push('/(auth)/change-password?mode=normal');
   };
 
+  const handleEditCompanyProfile = () => {
+    if (!companySettings) return;
+
+    setEditCompanyName(companySettings.companyName);
+    setEditRegNumber(companySettings.registrationNumber);
+    setEditAddress(companySettings.primaryAddress);
+    setIsEditing(true);
+    setShowCompanyEdit(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditCompanyName('');
+    setEditRegNumber('');
+    setEditAddress('');
+  };
+
+  const handleSaveCompanyProfile = () => {
+    // Validation
+    if (!editCompanyName.trim()) {
+      Alert.alert('Error', 'Company name cannot be empty');
+      return;
+    }
+    if (!editRegNumber.trim()) {
+      Alert.alert('Error', 'Registration number cannot be empty');
+      return;
+    }
+    if (!editAddress.trim()) {
+      Alert.alert('Error', 'Primary address cannot be empty');
+      return;
+    }
+
+    updateCompanySettings.mutate(
+      {
+        companyName: editCompanyName.trim(),
+        registrationNumber: editRegNumber.trim(),
+        primaryAddress: editAddress.trim(),
+      },
+      {
+        onSuccess: () => {
+          Alert.alert('Success', 'Company profile updated successfully');
+          setIsEditing(false);
+        },
+        onError: (error) => {
+          Alert.alert('Error', getErrorMessage(error));
+        },
+      },
+    );
+  };
+
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
@@ -137,32 +193,90 @@ export default function SettingsScreen(): React.ReactElement {
           <Card noPadding style={styles.linkCard}>
             <Text style={styles.sectionLabel}>COMPANY MANAGEMENT</Text>
 
-            {/* Company Profile — read-only display */}
+            {/* Company Profile — editable */}
             <NavRow
               icon="client"
               label="Company Profile"
-              onPress={() => setShowCompanyEdit((v) => !v)}
+              onPress={() => {
+                if (!isEditing) {
+                  setShowCompanyEdit((v) => !v);
+                }
+              }}
             />
             {showCompanyEdit && (
               <View style={styles.expandPanel}>
-                <View style={styles.readOnlyField}>
-                  <Text style={styles.readOnlyLabel}>Company Name</Text>
-                  <Text style={styles.readOnlyValue}>{companyName}</Text>
-                </View>
-                <View style={styles.readOnlyField}>
-                  <Text style={styles.readOnlyLabel}>Registration Number</Text>
-                  <Text style={styles.readOnlyValue}>{regNumber}</Text>
-                </View>
-                <View style={styles.readOnlyField}>
-                  <Text style={styles.readOnlyLabel}>Primary Address</Text>
-                  <Text style={styles.readOnlyValue}>{address}</Text>
-                </View>
-                <View style={styles.readOnlyNote}>
-                  <Icon name="info" size="sm" color={Colors.textMuted} />
-                  <Text style={styles.readOnlyNoteText}>
-                    Company profile is managed by system administrator
-                  </Text>
-                </View>
+                {isLoadingCompany ? (
+                  <View style={styles.loadingRow}>
+                    <ActivityIndicator size="small" color={Colors.primary} />
+                    <Text style={styles.loadingText}>Loading company profile...</Text>
+                  </View>
+                ) : isEditing ? (
+                  <>
+                    <Input
+                      label="Company Name"
+                      placeholder="e.g. AS Associates"
+                      value={editCompanyName}
+                      onChangeText={setEditCompanyName}
+                      editable={!updateCompanySettings.isPending}
+                    />
+                    <Input
+                      label="Registration Number"
+                      placeholder="e.g. CRN-2023-98471"
+                      value={editRegNumber}
+                      onChangeText={setEditRegNumber}
+                      editable={!updateCompanySettings.isPending}
+                    />
+                    <View>
+                      <Text style={styles.fieldLabel}>Primary Address</Text>
+                      <TextInput
+                        style={styles.textArea}
+                        value={editAddress}
+                        onChangeText={setEditAddress}
+                        placeholder="Full company address"
+                        placeholderTextColor={Colors.textMuted}
+                        multiline
+                        textAlignVertical="top"
+                        editable={!updateCompanySettings.isPending}
+                      />
+                    </View>
+                    <View style={styles.editActions}>
+                      <Button
+                        label={updateCompanySettings.isPending ? 'Saving...' : 'Save'}
+                        onPress={handleSaveCompanyProfile}
+                        disabled={updateCompanySettings.isPending}
+                        style={styles.flex1}
+                      />
+                      <Button
+                        label="Cancel"
+                        variant="outline"
+                        onPress={handleCancelEdit}
+                        disabled={updateCompanySettings.isPending}
+                        style={styles.flex1}
+                      />
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    <View style={styles.readOnlyField}>
+                      <Text style={styles.readOnlyLabel}>Company Name</Text>
+                      <Text style={styles.readOnlyValue}>{companySettings?.companyName ?? 'Loading...'}</Text>
+                    </View>
+                    <View style={styles.readOnlyField}>
+                      <Text style={styles.readOnlyLabel}>Registration Number</Text>
+                      <Text style={styles.readOnlyValue}>{companySettings?.registrationNumber ?? 'Loading...'}</Text>
+                    </View>
+                    <View style={styles.readOnlyField}>
+                      <Text style={styles.readOnlyLabel}>Primary Address</Text>
+                      <Text style={styles.readOnlyValue}>{companySettings?.primaryAddress ?? 'Loading...'}</Text>
+                    </View>
+                    <Button
+                      label="Edit Company Profile"
+                      variant="outline"
+                      onPress={handleEditCompanyProfile}
+                      disabled={!companySettings}
+                    />
+                  </>
+                )}
               </View>
             )}
 
@@ -309,11 +423,22 @@ const styles = StyleSheet.create({
   // Logout button — outline with danger border color
   logoutBtn: { borderColor: Colors.danger, marginTop: Spacing[2] },
 
-  // Company Profile inline expansion panel (read-only)
+  // Company Profile inline expansion panel
   expandPanel: {
     paddingHorizontal: Spacing[4],
     paddingBottom: Spacing[3],
     gap: Spacing[3],
+  },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing[2],
+    paddingVertical: Spacing[2],
+  },
+  loadingText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
   },
   readOnlyField: {
     gap: Spacing[1],
@@ -330,6 +455,28 @@ const styles = StyleSheet.create({
     fontSize: FontSize.md,
     color: Colors.textPrimary,
     lineHeight: 20,
+  },
+  fieldLabel: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.sm,
+    color: Colors.textPrimary,
+    marginBottom: 6,
+  },
+  textArea: {
+    minHeight: 80,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 8,
+    backgroundColor: Colors.surface,
+    padding: 14,
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.base,
+    color: Colors.textPrimary,
+  },
+  editActions: {
+    flexDirection: 'row',
+    gap: Spacing[2],
+    marginTop: Spacing[1],
   },
   readOnlyNote: {
     flexDirection: 'row',

@@ -11,6 +11,7 @@ import { AttendanceModule } from './modules/attendance/attendance.module';
 import { ProgressLogsModule } from './modules/progress-logs/progress-logs.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
 import { RequestsModule } from './modules/requests/requests.module';
+import { CompanySettingsModule } from './modules/company-settings/company-settings.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { AccountActiveGuard } from './common/guards/account-active.guard';
@@ -29,6 +30,7 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
     ProgressLogsModule,
     UploadsModule,
     RequestsModule,
+    CompanySettingsModule,
   ],
   providers: [
     PrismaService,

@@ -298,19 +298,6 @@ export default function RequestsScreen(): React.ReactElement {
             </View>
           </Card>
 
-          {/* Attachments */}
-          <Card style={styles.section}>
-            <Text style={styles.sectionLabel}>ATTACHMENTS (OPTIONAL)</Text>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={styles.dropzone}
-              disabled={createRequest.isPending}
-            >
-              <Text style={styles.dropzoneIcon}>📷</Text>
-              <Text style={styles.dropzoneText}>Tap to upload photo or file</Text>
-            </TouchableOpacity>
-          </Card>
-
           <Button
             label={createRequest.isPending ? 'Submitting...' : 'Submit Request'}
             onPress={handleSubmit}
@@ -437,20 +424,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   priorityText: { fontFamily: FontFamily.medium, fontSize: FontSize.sm },
-
-  // Attachments
-  dropzone: {
-    height: 80,
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    borderColor: Colors.border,
-    borderRadius: BorderRadius.btn,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-  },
-  dropzoneIcon: { fontSize: 22 },
-  dropzoneText: { fontFamily: FontFamily.regular, fontSize: 12, color: Colors.textSecondary },
 
   // Recent requests
   recentHeading: {

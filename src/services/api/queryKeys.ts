@@ -39,4 +39,7 @@ export const queryKeys = {
   uploads: {
     my: ['uploads', 'my'] as const,
   },
+  companySettings: {
+    get: ['companySettings'] as const,
+  },
 } as const;

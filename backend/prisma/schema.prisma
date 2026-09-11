@@ -217,3 +217,14 @@ model RefreshToken {
 
   @@map("refresh_tokens")
 }
+
+model CompanySettings {
+  id                 String   @id @default(uuid())
+  companyName        String
+  registrationNumber String
+  primaryAddress     String
+  createdAt          DateTime @default(now()) @db.Timestamptz
+  updatedAt          DateTime @updatedAt @db.Timestamptz
+
+  @@map("company_settings")
+}

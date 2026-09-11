@@ -7,10 +7,8 @@ import { Button } from '../../../src/components/ui/Button';
 import { Icon } from '../../../src/components/ui/Icon';
 import { Card } from '../../../src/components/ui/Card';
 import { Input } from '../../../src/components/ui/Input';
-import { Avatar } from '../../../src/components/ui/Avatar';
 import { Dropdown } from '../../../src/components/ui/Dropdown';
 import { useCreateProject } from '../../../src/hooks/useAdminProjects';
-import { useEmployees } from '../../../src/hooks/useEmployees';
 import { getErrorMessage } from '../../../src/services/api/errorHandler';
 import { formatLocalDateKey } from '../../../src/utils/date';
 import {
@@ -20,7 +18,6 @@ import {
   FontSize,
   LetterSpacing,
   Spacing,
-  withAlpha,
 } from '../../../src/constants/tokens';
 
 // ─── Static configuration ─────────────────────────────────────────────────────
@@ -46,16 +43,11 @@ export default function NewProjectScreen(): React.ReactElement {
   const router = useRouter();
   const createProject = useCreateProject();
 
-  // Fetch active employees for team assignment
-  const { data: employeesData, isLoading: isLoadingEmployees } = useEmployees(1, 'ACTIVE');
-
   const [name, setName] = useState('');
   const [client, setClient] = useState('');
   const [address, setAddress] = useState('');
   const [services, setServices] = useState<string[]>([]);
   const [customService, setCustomService] = useState('');
-  const [team, setTeam] = useState<string[]>([]);
-  const [search, setSearch] = useState('');
   const [description, setDescription] = useState('');
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState<Date | null>(null);
@@ -66,8 +58,6 @@ export default function NewProjectScreen(): React.ReactElement {
 
   const toggleService = (s: string) =>
     setServices((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
-  const toggleTeam = (id: string) =>
-    setTeam((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
   const handleStartDateChange = (_event: any, selectedDate?: Date) => {
     setShowStartPicker(false);
@@ -91,18 +81,6 @@ export default function NewProjectScreen(): React.ReactElement {
       setEndDate(selectedDate);
     }
   };
-
-  // Map backend employees to UI format
-  const engineers = employeesData?.data.map((user) => ({
-    id: user.id,
-    name: `${user.firstName} ${user.lastName}`,
-    initials: `${user.firstName?.[0] ?? 'U'}${user.lastName?.[0] ?? ''}`.toUpperCase(),
-    role: user.designation || 'Employee',
-  })) ?? [];
-
-  const filteredEngineers = engineers.filter((e) =>
-    e.name.toLowerCase().includes(search.trim().toLowerCase())
-  );
 
   const handleSubmit = () => {
     // Basic validation
@@ -306,55 +284,6 @@ export default function NewProjectScreen(): React.ReactElement {
             )}
           </Card>
 
-          {/* Assign team */}
-          <Card style={styles.section}>
-            <Text style={styles.sectionLabel}>ASSIGN TEAM</Text>
-            <TextInput
-              style={styles.searchInput}
-              value={search}
-              onChangeText={setSearch}
-              placeholder="Search engineers..."
-              placeholderTextColor={Colors.textMuted}
-              editable={!createProject.isPending && !isLoadingEmployees}
-            />
-            {isLoadingEmployees ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="small" color={Colors.primary} />
-                <Text style={styles.loadingText}>Loading employees...</Text>
-              </View>
-            ) : engineers.length === 0 ? (
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>No active employees available</Text>
-              </View>
-            ) : filteredEngineers.length === 0 ? (
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>No employees match "{search}"</Text>
-              </View>
-            ) : (
-              filteredEngineers.map((e) => {
-                const selected = team.includes(e.id);
-                return (
-                  <TouchableOpacity
-                    key={e.id}
-                    activeOpacity={0.7}
-                    onPress={() => toggleTeam(e.id)}
-                    style={[styles.engineerRow, selected && styles.engineerRowActive]}
-                    disabled={createProject.isPending}
-                  >
-                    <Avatar initials={e.initials} size="sm" />
-                    <View style={styles.flex1}>
-                      <Text style={styles.engineerName}>{e.name}</Text>
-                      <Text style={styles.engineerRole}>{e.role}</Text>
-                    </View>
-                    <View style={[styles.selectDot, selected && styles.selectDotActive]}>
-                      {selected && <Text style={styles.selectDotText}>✓</Text>}
-                    </View>
-                  </TouchableOpacity>
-                );
-              })
-            )}
-          </Card>
-
           {/* Description */}
           <Card style={styles.section}>
             <Text style={styles.sectionLabel}>DESCRIPTION</Text>
@@ -486,59 +415,6 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
   },
 
-  // Team search — matches Input field spec (48px, 1px border, 8px radius, 14px padding)
-  searchInput: {
-    height: 48,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: BorderRadius.btn,
-    backgroundColor: Colors.surface,
-    paddingHorizontal: 14,
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.base,
-    color: Colors.textPrimary,
-  },
-  engineerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing[3],
-    padding: Spacing[3],
-    borderRadius: BorderRadius.btn,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  engineerRowActive: {
-    borderColor: Colors.accent,
-    backgroundColor: withAlpha(Colors.accent, 0.07),
-  },
-  // List item title — body-lg: 16px / 400 per DESIGN.md §14
-  engineerName: {
-    fontFamily: FontFamily.medium,
-    fontSize: FontSize.base,
-    color: Colors.textPrimary,
-  },
-  // List item subtitle — body-md: 14px / 400
-  engineerRole: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.md,
-    color: Colors.textSecondary,
-  },
-  selectDot: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
-    borderColor: Colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  selectDotActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
-  selectDotText: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.sm,
-    color: Colors.textOnAccent,
-  },
-
   // Text area — min-height 120px per DESIGN.md §7
   textArea: {
     minHeight: 120,
@@ -550,29 +426,5 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.regular,
     fontSize: FontSize.base,
     color: Colors.textPrimary,
-  },
-
-  // Loading and empty states
-  loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing[2],
-    paddingVertical: Spacing[4],
-  },
-  loadingText: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.sm,
-    color: Colors.textSecondary,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    paddingVertical: Spacing[4],
-  },
-  emptyText: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.sm,
-    color: Colors.textSecondary,
-    textAlign: 'center',
   },
 });
