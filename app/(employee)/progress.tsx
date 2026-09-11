@@ -57,7 +57,7 @@ export default function ProgressScreen(): React.ReactElement {
   const displayFirstName = meData?.firstName ?? '';
   const displayLastName = meData?.lastName ?? '';
   const displayInitials = displayFirstName && displayLastName
-    ? `${displayFirstName[0]}${displayLastName[0]}`.toUpperCase()
+    ? `${displayFirstName?.[0] ?? 'U'}${displayLastName?.[0] ?? ''}`.toUpperCase()
     : user?.avatarInitials ?? 'U';
   const displayPhotoUrl = meData?.photoUrl ?? null;
 

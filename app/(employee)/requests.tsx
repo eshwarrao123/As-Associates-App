@@ -333,7 +333,7 @@ export default function RequestsScreen(): React.ReactElement {
               const typeConfig = getTypeConfig(req.type);
               const status = mapStatusToBadge(req.status);
               // Extract title from description (first line)
-              const title = req.description.split('\n')[0] || 'Request';
+              const title = req.description?.split('\n')[0] || 'Request';
 
               return (
                 <Card key={req.id} style={styles.requestCard}>

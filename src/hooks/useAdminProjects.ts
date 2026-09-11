@@ -126,18 +126,14 @@ export function useUnassignEmployee() {
   return useMutation({
     mutationFn: ({
       projectId,
-      employeeId,
+      assignmentId,
     }: {
       projectId: string;
-      employeeId: string;
-    }) => projectsService.unassignEmployee(projectId, employeeId),
+      assignmentId: string;
+    }) => projectsService.unassignEmployee(projectId, assignmentId),
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({
         queryKey: queryKeys.projects.assignments(variables.projectId),
-      });
-      // Invalidate the employee's project list
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.users.employeeProjects(variables.employeeId),
       });
       // Also invalidate the employee's own "my projects" query
       queryClient.invalidateQueries({

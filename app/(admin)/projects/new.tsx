@@ -96,7 +96,7 @@ export default function NewProjectScreen(): React.ReactElement {
   const engineers = employeesData?.data.map((user) => ({
     id: user.id,
     name: `${user.firstName} ${user.lastName}`,
-    initials: `${user.firstName[0]}${user.lastName[0]}`.toUpperCase(),
+    initials: `${user.firstName?.[0] ?? 'U'}${user.lastName?.[0] ?? ''}`.toUpperCase(),
     role: user.designation || 'Employee',
   })) ?? [];
 

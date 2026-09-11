@@ -216,7 +216,7 @@ export default function EmployeeHomeScreen(): React.ReactElement {
   const displayDesignation = meData?.designation ?? storeUser?.department;
 
   const displayInitials = meData
-    ? `${meData.firstName[0]}${meData.lastName[0]}`.toUpperCase()
+    ? `${meData.firstName?.[0] ?? 'U'}${meData.lastName?.[0] ?? ''}`.toUpperCase()
     : storeUser?.avatarInitials ?? 'U';
 
   const displayPhotoUrl = meData?.photoUrl ?? null;

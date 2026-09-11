@@ -253,11 +253,11 @@ interface AssignmentResponse {
 /**
  * Unassigns an employee from a project.
  * @param projectId - Project ID
- * @param employeeId - Employee ID to unassign
+ * @param assignmentId - Assignment ID to remove (not employeeId)
  * @returns void
  */
-export async function unassignEmployee(projectId: string, employeeId: string) {
-  await apiClient.delete(`/projects/${projectId}/assignments/${employeeId}`);
+export async function unassignEmployee(projectId: string, assignmentId: string) {
+  await apiClient.delete(`/projects/${projectId}/assignments/${assignmentId}`);
 }
 
 // ─── User Assignment Response Type ────────────────────────────────────────────

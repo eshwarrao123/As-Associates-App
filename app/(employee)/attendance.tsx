@@ -83,7 +83,7 @@ export default function AttendanceScreen(): React.ReactElement {
 
   // Get display data with preference for API data
   const displayInitials = meData
-    ? `${meData.firstName[0]}${meData.lastName[0]}`.toUpperCase()
+    ? `${meData.firstName?.[0] ?? 'U'}${meData.lastName?.[0] ?? ''}`.toUpperCase()
     : user?.avatarInitials ?? 'U';
   const displayPhotoUrl = meData?.photoUrl ?? null;
 

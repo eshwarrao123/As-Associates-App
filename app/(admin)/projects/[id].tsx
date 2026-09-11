@@ -305,7 +305,7 @@ export default function ProjectDetailScreen(): React.ReactElement {
               <Text style={styles.sectionLabel}>ASSIGNED TEAM</Text>
               {project.team && project.team.length > 0 ? (
                 project.team.map((m, i) => {
-                  const initials = `${m.firstName[0]}${m.lastName[0]}`.toUpperCase();
+                  const initials = `${m.firstName?.[0] ?? 'U'}${m.lastName?.[0] ?? ''}`.toUpperCase();
                   return (
                     <View
                       key={m.id}
