@@ -40,10 +40,14 @@ export function useUpdateRequestStatus() {
       reviewNote?: string;
     }) => requestsService.updateRequestStatus(id, status, reviewNote),
     onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.requests.admin() });
+      // Invalidate ALL admin request queries (all status filters)
+      queryClient.invalidateQueries({ queryKey: ['requests', 'admin'] });
+      // Invalidate the specific request detail
       queryClient.invalidateQueries({
         queryKey: queryKeys.requests.detail(variables.id),
       });
+      // Invalidate employee's request list so they see the status change
+      queryClient.invalidateQueries({ queryKey: queryKeys.requests.my });
     },
   });
 }
