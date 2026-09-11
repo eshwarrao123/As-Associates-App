@@ -16,17 +16,8 @@ import {
   withAlpha,
 } from '../../../src/constants/tokens';
 
-// ─── Employee type from API ────────────────────────────────────────────────────
-
-interface Employee {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  employeeCode?: string;
-  designation?: string;
-  status: 'PENDING' | 'ACTIVE' | 'DEACTIVATED';
-}
+// ─── Import UserResponse type ─────────────────────────────────────────────────
+import type { UserResponse } from '../../../src/services/users/usersService';
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -50,7 +41,7 @@ export default function AssignEngineersScreen(): React.ReactElement {
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
 
-  const filtered = allEmployees.filter((e: Employee) => {
+  const filtered = allEmployees.filter((e: UserResponse) => {
     const fullName = `${e.firstName} ${e.lastName}`.toLowerCase();
     const searchLower = search.trim().toLowerCase();
     return (

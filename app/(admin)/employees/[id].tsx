@@ -117,7 +117,7 @@ export default function EmployeeDetailScreen(): React.ReactElement {
   const uploadCount = employee._count?.uploads ?? 0;
 
   // Map projects to display format
-  const assignedProjects = employee.assignments?.slice(0, 3).map((a) => ({
+  const assignedProjects = employee.assignments?.slice(0, 3).map((a: { project: { id: string; name: string; status: string } }) => ({
     id: a.project.id,
     name: a.project.name,
     status: mapProjectStatusToBadge(a.project.status),
@@ -241,7 +241,7 @@ export default function EmployeeDetailScreen(): React.ReactElement {
               </View>
             ) : (
               <>
-                {assignedProjects.map((p, i) => (
+                {assignedProjects.map((p: { id: string; name: string; status: BadgeVariant; statusLabel: string }, i: number) => (
                   <React.Fragment key={p.id}>
                     <View style={styles.projectRow}>
                       <Text style={styles.projectName} numberOfLines={1}>{p.name}</Text>
