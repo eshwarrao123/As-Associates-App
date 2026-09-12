@@ -72,16 +72,17 @@ model User {
   createdAt          DateTime   @default(now()) @db.Timestamptz
   updatedAt          DateTime   @updatedAt @db.Timestamptz
 
-  createdBy           User?           @relation("CreatedByUser", fields: [createdById], references: [id], onDelete: SetNull)
-  createdUsers        User[]          @relation("CreatedByUser")
-  assignments         Assignment[]    @relation("UserAssignments")
-  assignedAssignments Assignment[]    @relation("AssignedByUser")
+  createdBy           User?                @relation("CreatedByUser", fields: [createdById], references: [id], onDelete: SetNull)
+  createdUsers        User[]               @relation("CreatedByUser")
+  assignments         Assignment[]         @relation("UserAssignments")
+  assignedAssignments Assignment[]         @relation("AssignedByUser")
   attendanceLogs      AttendanceLog[]
   progressLogs        ProgressLog[]
   uploads             Upload[]
-  requests            Request[]       @relation("UserRequests")
+  requests            Request[]            @relation("UserRequests")
   refreshTokens       RefreshToken[]
-  reviewedRequests    Request[]       @relation("ReviewedRequests")
+  reviewedRequests    Request[]            @relation("ReviewedRequests")
+  passwordResetTokens PasswordResetToken[]
 
   @@map("users")
 }
@@ -227,4 +228,18 @@ model CompanySettings {
   updatedAt          DateTime @updatedAt @db.Timestamptz
 
   @@map("company_settings")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  expiresAt DateTime  @db.Timestamptz
+  usedAt    DateTime? @db.Timestamptz
+  createdAt DateTime  @default(now()) @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
 }
