@@ -3,6 +3,7 @@ import {
   ConflictException,
   NotFoundException,
   BadRequestException,
+  UnauthorizedException,
   Inject,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -339,21 +340,71 @@ export class UsersService {
     return user;
   }
 
-  // ─── Employee: Update own profile ──────────────────────────────────────────
+  // ─── Self-service: Update own profile ──────────────────────────────────────
   async updateMe(userId: string, dto: UpdateMeDto) {
+    // If email is being changed, require and verify current password
+    if (dto.email !== undefined) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { email: true, passwordHash: true },
+      });
+      if (!user) throw new NotFoundException('User not found');
+
+      if (!user.passwordHash) {
+        throw new BadRequestException('No password configured for this account');
+      }
+
+      // currentPassword is required by the DTO validator when email is present,
+      // but guard here too in case validation is bypassed.
+      if (!dto.currentPassword) {
+        throw new BadRequestException('currentPassword is required when changing email');
+      }
+
+      const passwordValid = await argon2.verify(user.passwordHash, dto.currentPassword);
+      if (!passwordValid) {
+        throw new UnauthorizedException('Current password is incorrect');
+      }
+
+      // Normalize email and enforce uniqueness
+      const normalizedEmail = dto.email.trim().toLowerCase();
+      if (normalizedEmail !== user.email) {
+        const existing = await this.prisma.user.findUnique({
+          where: { email: normalizedEmail },
+        });
+        if (existing) {
+          throw new ConflictException('Email is already in use');
+        }
+      }
+      // Write back the normalized form
+      dto.email = normalizedEmail;
+    }
+
+    const updateData: {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+      phone?: string;
+      photoUrl?: string;
+    } = {};
+
+    if (dto.firstName !== undefined) updateData.firstName = dto.firstName;
+    if (dto.lastName !== undefined) updateData.lastName = dto.lastName;
+    if (dto.email !== undefined) updateData.email = dto.email;
+    if (dto.phone !== undefined) updateData.phone = dto.phone;
+    if (dto.photoUrl !== undefined) updateData.photoUrl = dto.photoUrl;
+
     const updated = await this.prisma.user.update({
       where: { id: userId },
-      data: {
-        phone: dto.phone,
-        photoUrl: dto.photoUrl,
-      },
+      data: updateData,
       select: {
         id: true,
         email: true,
         firstName: true,
         lastName: true,
+        role: true,
         phone: true,
         photoUrl: true,
+        updatedAt: true,
       },
     });
     return updated;

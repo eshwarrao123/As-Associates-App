@@ -65,10 +65,16 @@ apiClient.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & {
       _retry?: boolean;
+      skipAuthRefresh?: boolean;
     };
 
     // If 401 and we haven't tried refreshing yet
     if (error.response?.status === 401) {
+      // Skip auth refresh if explicitly requested (e.g., for password verification endpoints)
+      if (originalRequest.skipAuthRefresh) {
+        return Promise.reject(error);
+      }
+
       // Check if this is an auth endpoint — don't try to refresh for those
       const requestUrl = originalRequest.url ?? '';
       const isAuthEndpoint =

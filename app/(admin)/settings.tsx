@@ -9,9 +9,9 @@ import { Input } from '../../src/components/ui/Input';
 import { AdminBottomNav } from '../../src/components/ui/AdminBottomNav';
 import { Icon, type IconName } from '../../src/components/ui/Icon';
 import { useAuthStore } from '../../src/store/auth.store';
-import { useMe } from '../../src/hooks/useMe';
+import { useMe, useUpdateMe } from '../../src/hooks/useMe';
 import { useCompanySettings, useUpdateCompanySettings } from '../../src/hooks/useCompanySettings';
-import { getErrorMessage } from '../../src/services/api/errorHandler';
+import { getErrorMessage, parseApiError } from '../../src/services/api/errorHandler';
 import {
   Colors,
   FontFamily,
@@ -58,10 +58,21 @@ export default function SettingsScreen(): React.ReactElement {
   const [editRegNumber, setEditRegNumber] = useState('');
   const [editAddress, setEditAddress] = useState('');
 
+  // Editable admin profile fields
+  const [showProfileEdit, setShowProfileEdit] = useState(false);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editFirstName, setEditFirstName] = useState('');
+  const [editLastName, setEditLastName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editCurrentPassword, setEditCurrentPassword] = useState('');
+  const [originalEmail, setOriginalEmail] = useState('');
+
   const { data: meData, isLoading: meLoading } = useMe();
   const { data: companySettings, isLoading: isLoadingCompany } = useCompanySettings();
   const updateCompanySettings = useUpdateCompanySettings();
+  const updateMe = useUpdateMe();
   const storeUser = useAuthStore((state) => state.user);
+  const setUser = useAuthStore((state) => state.setUser);
 
   // Use API data if available, fallback to store user
   const apiUser = meData;
@@ -108,6 +119,96 @@ export default function SettingsScreen(): React.ReactElement {
 
   const handleChangePassword = () => {
     router.push('/(auth)/change-password?mode=normal');
+  };
+
+  const handleEditProfile = () => {
+    if (!apiUser) return;
+
+    setEditFirstName(apiUser.firstName);
+    setEditLastName(apiUser.lastName);
+    setEditEmail(apiUser.email);
+    setOriginalEmail(apiUser.email);
+    setEditCurrentPassword('');
+    setIsEditingProfile(true);
+    setShowProfileEdit(true);
+  };
+
+  const handleCancelProfileEdit = () => {
+    setIsEditingProfile(false);
+    setEditFirstName('');
+    setEditLastName('');
+    setEditEmail('');
+    setEditCurrentPassword('');
+    setOriginalEmail('');
+  };
+
+  const handleSaveProfile = () => {
+    // Validation
+    if (!editFirstName.trim()) {
+      Alert.alert('Error', 'First name cannot be empty');
+      return;
+    }
+    if (!editLastName.trim()) {
+      Alert.alert('Error', 'Last name cannot be empty');
+      return;
+    }
+    if (!editEmail.trim()) {
+      Alert.alert('Error', 'Email cannot be empty');
+      return;
+    }
+
+    const emailChanged = editEmail.trim().toLowerCase() !== originalEmail.toLowerCase();
+
+    if (emailChanged && !editCurrentPassword.trim()) {
+      Alert.alert('Error', 'Current password is required to change email');
+      return;
+    }
+
+    const payload: {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+      currentPassword?: string;
+    } = {};
+
+    // Only send fields that are actually being edited
+    if (editFirstName.trim() !== apiUser?.firstName) {
+      payload.firstName = editFirstName.trim();
+    }
+    if (editLastName.trim() !== apiUser?.lastName) {
+      payload.lastName = editLastName.trim();
+    }
+    if (emailChanged) {
+      payload.email = editEmail.trim();
+      payload.currentPassword = editCurrentPassword.trim();
+    }
+
+    updateMe.mutate(payload, {
+      onSuccess: (updatedUser) => {
+        // Update auth store with new user data
+        if (storeUser) {
+          setUser({
+            ...storeUser,
+            name: `${updatedUser.firstName} ${updatedUser.lastName}`,
+            email: updatedUser.email,
+          });
+        }
+
+        Alert.alert('Success', 'Profile updated successfully');
+        setIsEditingProfile(false);
+        setEditCurrentPassword('');
+      },
+      onError: (error) => {
+        // For profile updates, use the backend's actual error message
+        // (e.g., "Current password is incorrect" for 401)
+        // instead of the generic "Session expired" message
+        const apiError = parseApiError(error);
+        const message = apiError.statusCode === 401 || apiError.statusCode === 409 || apiError.statusCode === 422
+          ? apiError.message
+          : getErrorMessage(error);
+        Alert.alert('Error', message);
+      },
+    });
   };
 
   const handleEditCompanyProfile = () => {
@@ -187,6 +288,113 @@ export default function SettingsScreen(): React.ReactElement {
                 <Text style={styles.companyMeta}>ID: {displayEmployeeCode}</Text>
               )}
             </View>
+          </Card>
+
+          {/* Admin Profile Edit Section */}
+          <Card noPadding style={styles.linkCard}>
+            <Text style={styles.sectionLabel}>ADMIN PROFILE</Text>
+            <NavRow
+              icon="profile"
+              label="Edit Profile"
+              onPress={() => {
+                if (!isEditingProfile) {
+                  setShowProfileEdit((v) => !v);
+                }
+              }}
+            />
+            {showProfileEdit && (
+              <View style={styles.expandPanel}>
+                {meLoading ? (
+                  <View style={styles.loadingRow}>
+                    <ActivityIndicator size="small" color={Colors.primary} />
+                    <Text style={styles.loadingText}>Loading profile...</Text>
+                  </View>
+                ) : isEditingProfile ? (
+                  <>
+                    <Input
+                      label="First Name"
+                      placeholder="e.g. John"
+                      value={editFirstName}
+                      onChangeText={setEditFirstName}
+                      editable={!updateMe.isPending}
+                      autoCapitalize="words"
+                    />
+                    <Input
+                      label="Last Name"
+                      placeholder="e.g. Doe"
+                      value={editLastName}
+                      onChangeText={setEditLastName}
+                      editable={!updateMe.isPending}
+                      autoCapitalize="words"
+                    />
+                    <Input
+                      label="Email"
+                      placeholder="e.g. admin@asassociates.com"
+                      value={editEmail}
+                      onChangeText={setEditEmail}
+                      editable={!updateMe.isPending}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                    />
+                    {editEmail.trim().toLowerCase() !== originalEmail.toLowerCase() && (
+                      <>
+                        <View style={styles.passwordNote}>
+                          <Icon name="lock" size="sm" color={Colors.warning} />
+                          <Text style={styles.passwordNoteText}>
+                            Current password is required to change email
+                          </Text>
+                        </View>
+                        <Input
+                          label="Current Password"
+                          placeholder="Enter your current password"
+                          value={editCurrentPassword}
+                          onChangeText={setEditCurrentPassword}
+                          editable={!updateMe.isPending}
+                          secureTextEntry
+                          secureToggle
+                        />
+                      </>
+                    )}
+                    <View style={styles.editActions}>
+                      <Button
+                        label={updateMe.isPending ? 'Saving...' : 'Save'}
+                        onPress={handleSaveProfile}
+                        disabled={updateMe.isPending}
+                        style={styles.flex1}
+                      />
+                      <Button
+                        label="Cancel"
+                        variant="outline"
+                        onPress={handleCancelProfileEdit}
+                        disabled={updateMe.isPending}
+                        style={styles.flex1}
+                      />
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    <View style={styles.readOnlyField}>
+                      <Text style={styles.readOnlyLabel}>First Name</Text>
+                      <Text style={styles.readOnlyValue}>{apiUser?.firstName ?? 'Loading...'}</Text>
+                    </View>
+                    <View style={styles.readOnlyField}>
+                      <Text style={styles.readOnlyLabel}>Last Name</Text>
+                      <Text style={styles.readOnlyValue}>{apiUser?.lastName ?? 'Loading...'}</Text>
+                    </View>
+                    <View style={styles.readOnlyField}>
+                      <Text style={styles.readOnlyLabel}>Email</Text>
+                      <Text style={styles.readOnlyValue}>{apiUser?.email ?? 'Loading...'}</Text>
+                    </View>
+                    <Button
+                      label="Edit Profile"
+                      variant="outline"
+                      onPress={handleEditProfile}
+                      disabled={!apiUser}
+                    />
+                  </>
+                )}
+              </View>
+            )}
           </Card>
 
           {/* Company management */}
@@ -495,5 +703,22 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.regular,
     fontSize: FontSize.sm,
     color: Colors.textMuted,
+  },
+  passwordNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing[2],
+    backgroundColor: '#FFF9E6',
+    padding: Spacing[2],
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#FFE5B4',
+  },
+  passwordNoteText: {
+    flex: 1,
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.sm,
+    color: '#8B6914',
+    lineHeight: 18,
   },
 });

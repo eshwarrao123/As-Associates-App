@@ -58,10 +58,17 @@ export async function getMe(): Promise<MeResponse> {
  * @returns Updated profile
  */
 export async function updateMe(data: {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  currentPassword?: string;
   phone?: string;
   photoUrl?: string;
 }): Promise<MeResponse> {
-  const response = await apiClient.put<MeResponse>('/users/me', data);
+  const response = await apiClient.put<MeResponse>('/users/me', data, {
+    // Skip automatic token refresh on 401 — this endpoint uses 401 for wrong password
+    skipAuthRefresh: true,
+  } as any);
   return response.data;
 }
 
